@@ -43,17 +43,158 @@
   line-height: 1.7;
 }
 
-.puzzle-ref-card {
+.puzzle-ref-stats {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  gap: 20px;
-  max-width: 720px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 900px;
+  margin: 0 auto 18px;
+}
+
+.puzzle-ref-stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 104px;
+  padding: 20px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 14px;
+  background: hsl(var(--card));
+  box-shadow: var(--shadow);
+}
+
+.puzzle-ref-stat-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+}
+
+.puzzle-ref-stat-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.puzzle-ref-stat-icon.is-orange {
+  background: rgba(231, 119, 50, 0.14);
+  color: #ffbd72;
+}
+
+.puzzle-ref-stat-icon.is-green {
+  background: rgba(74, 163, 118, 0.14);
+  color: #75d4a1;
+}
+
+.puzzle-ref-stat-icon.is-blue {
+  background: rgba(83, 143, 204, 0.15);
+  color: #85baf0;
+}
+
+.puzzle-ref-stat p {
+  margin: 0 0 4px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.puzzle-ref-stat strong {
+  font-family: var(--app-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.puzzle-ref-board {
+  max-width: 900px;
   margin: 0 auto;
-  padding: clamp(24px, 5vw, 40px);
+  padding: clamp(22px, 4vw, 32px);
   border: 1px solid hsl(var(--border));
   border-radius: 16px;
   background: hsl(var(--card));
   box-shadow: var(--shadow);
+}
+
+.puzzle-ref-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.puzzle-ref-board h2 {
+  margin: 0;
+  font-family: var(--app-font-display);
+  font-size: clamp(19px, 3vw, 24px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.puzzle-ref-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(117, 212, 161, 0.22);
+  border-radius: 999px;
+  background: rgba(74, 163, 118, 0.1);
+  color: #9ce0ba;
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.puzzle-ref-source-badge span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #75d4a1;
+}
+
+.puzzle-ref-board .puzzle-ref-copy {
+  max-width: 680px;
+  margin: 10px 0 22px;
+}
+
+.puzzle-ref-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 100px;
+  gap: 14px;
+  padding: 11px 14px;
+  border-top: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.puzzle-ref-source-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 14px 4px;
+}
+
+.puzzle-ref-source-card .puzzle-ref-card-icon {
+  width: 42px;
+  height: 42px;
+}
+
+.puzzle-ref-source-copy h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.puzzle-ref-source-copy p {
+  margin: 5px 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .puzzle-ref-card-icon {
@@ -78,14 +219,6 @@
   font-family: var(--app-font-mono);
   font-size: 10px;
   letter-spacing: 0.1em;
-}
-
-.puzzle-ref-card h2 {
-  margin: 0;
-  font-family: var(--app-font-display);
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
 }
 
 .puzzle-ref-copy {
@@ -135,8 +268,34 @@
 }
 
 @media (max-width: 540px) {
-  .puzzle-ref-card {
+  .puzzle-ref-stats {
     grid-template-columns: 1fr;
-    gap: 15px;
   }
+
+  .puzzle-ref-stat {
+    min-height: 82px;
+  }
+
+  .puzzle-ref-board-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .puzzle-ref-columns {
+    grid-template-columns: minmax(0, 1fr) 70px;
+  }
+
+  .puzzle-ref-columns span:last-child {
+    display: none;
+  }
+
+  .puzzle-ref-source-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .puzzle-ref-source-card .puzzle-ref-link {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
 }
