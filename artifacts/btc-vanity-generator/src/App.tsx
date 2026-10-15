@@ -11,6 +11,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import BitcoinPuzzlePage from '@/pages/bitcoin-puzzle';
+import BitcoinBalancePage from '@/pages/bitcoin-balance';
 import {
   ArrowUpRight,
   Bitcoin,
@@ -141,7 +142,7 @@ function SiteHeader({
   activePage,
   children,
 }: {
-  activePage: 'generator' | 'puzzle';
+  activePage: 'generator' | 'puzzle' | 'balance';
   children: ReactNode;
 }) {
   return (
@@ -166,6 +167,14 @@ function SiteHeader({
           data-testid="link-bitcoin-puzzle"
         >
           Bitcoin Puzzle
+        </Link>
+        <Link
+          href="/balance-check"
+          className={`site-nav-link ${activePage === 'balance' ? 'active' : ''}`}
+          aria-current={activePage === 'balance' ? 'page' : undefined}
+          data-testid="link-balance-check"
+        >
+          Balance Check
         </Link>
       </nav>
       <div className="top-meta">{children}</div>
@@ -1032,6 +1041,7 @@ function Router() {
   const [location] = useLocation();
   const isHome = location === '/';
   const isBitcoinPuzzle = location === '/bitcoin-puzzle';
+  const isBitcoinBalance = location === '/balance-check';
 
   return (
     <RoutedErrorBoundary>
@@ -1044,7 +1054,13 @@ function Router() {
         </SiteHeader>
         <BitcoinPuzzlePage active={isBitcoinPuzzle} />
       </div>
-      {!isHome && !isBitcoinPuzzle && (
+      <div hidden={!isBitcoinBalance} className="app-shell">
+        <SiteHeader activePage="balance">
+          <span>BULK BALANCE CHECK</span>
+        </SiteHeader>
+        <BitcoinBalancePage active={isBitcoinBalance} />
+      </div>
+      {!isHome && !isBitcoinPuzzle && !isBitcoinBalance && (
         <Switch>
           <Route component={NotFound} />
         </Switch>
