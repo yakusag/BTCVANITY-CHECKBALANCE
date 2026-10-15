@@ -10,7 +10,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import BalanceCheckerPage from '@/pages/balance-checker';
+import BitcoinPuzzlePage from '@/pages/bitcoin-puzzle';
 import {
   ArrowUpRight,
   Bitcoin,
@@ -141,7 +141,7 @@ function SiteHeader({
   activePage,
   children,
 }: {
-  activePage: 'generator' | 'tools';
+  activePage: 'generator' | 'puzzle';
   children: ReactNode;
 }) {
   return (
@@ -160,12 +160,12 @@ function SiteHeader({
           Generator
         </Link>
         <Link
-          href="/tools/balance-checker"
-          className={`site-nav-link ${activePage === 'tools' ? 'active' : ''}`}
-          aria-current={activePage === 'tools' ? 'page' : undefined}
-          data-testid="link-balance-tools"
+          href="/bitcoin-puzzle"
+          className={`site-nav-link ${activePage === 'puzzle' ? 'active' : ''}`}
+          aria-current={activePage === 'puzzle' ? 'page' : undefined}
+          data-testid="link-bitcoin-puzzle"
         >
-          Balance tools
+          Bitcoin Puzzle
         </Link>
       </nav>
       <div className="top-meta">{children}</div>
@@ -1014,20 +1014,20 @@ function Home() {
 function Router() {
   const [location] = useLocation();
   const isHome = location === '/';
-  const isBalanceChecker = location === '/tools/balance-checker';
+  const isBitcoinPuzzle = location === '/bitcoin-puzzle';
 
   return (
     <RoutedErrorBoundary>
       <div hidden={!isHome} data-testid="preserved-generator-page">
         <Home />
       </div>
-      <div hidden={!isBalanceChecker} className="app-shell">
-        <SiteHeader activePage="tools">
-          <span>PUBLIC ADDRESS DATA</span>
+      <div hidden={!isBitcoinPuzzle} className="app-shell">
+        <SiteHeader activePage="puzzle">
+          <span>PUZZLE REFERENCE</span>
         </SiteHeader>
-        <BalanceCheckerPage active={isBalanceChecker} />
+        <BitcoinPuzzlePage active={isBitcoinPuzzle} />
       </div>
-      {!isHome && !isBalanceChecker && (
+      {!isHome && !isBitcoinPuzzle && (
         <Switch>
           <Route component={NotFound} />
         </Switch>
