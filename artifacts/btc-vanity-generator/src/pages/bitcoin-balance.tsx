@@ -3,6 +3,7 @@ import {
   AlertCircle,
   Check,
   Download,
+  Eraser,
   FileUp,
   LoaderCircle,
   Search,
@@ -96,7 +97,7 @@ export default function BitcoinBalancePage({ active }: { active: boolean }) {
   const [fundedAddresses, setFundedAddresses] = useState<FundedAddress[]>([]);
 
   useEffect(() => {
-    if (active) document.title = 'Bitcoin Balance Check | Vanity / BTC';
+    if (active) document.title = 'Bitcoin Balance Check | IS LUCKY BTC';
   }, [active]);
 
   async function loadFile(file: File | undefined) {
@@ -108,6 +109,18 @@ export default function BitcoinBalancePage({ active }: { active: boolean }) {
     inputRef.current.value = await file.text();
     setFileName(file.name);
     setNotice('');
+  }
+
+  function clearAddresses() {
+    if (inputRef.current) inputRef.current.value = '';
+    if (fileRef.current) fileRef.current.value = '';
+    setFileName('');
+    setStatus('ready');
+    setNotice('');
+    setTotalAddresses(0);
+    setInvalidCount(0);
+    setCheckedCount(0);
+    setFundedAddresses([]);
   }
 
   async function startCheck() {
@@ -274,6 +287,15 @@ export default function BitcoinBalancePage({ active }: { active: boolean }) {
                 data-testid="input-balance-file"
               />
             </label>
+            <button
+              className="balance-clear-button"
+              type="button"
+              disabled={busy}
+              onClick={clearAddresses}
+              data-testid="button-clear-balance-check"
+            >
+              <Eraser aria-hidden="true" /> Clear
+            </button>
             {status === 'running' ? (
               <button className="balance-start-button is-stop" type="button" onClick={stopCheck} data-testid="button-stop-balance-check">
                 <Square aria-hidden="true" /> Stop check

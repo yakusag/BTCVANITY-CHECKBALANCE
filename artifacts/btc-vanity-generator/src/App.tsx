@@ -147,9 +147,9 @@ function SiteHeader({
 }) {
   return (
     <header className="topbar">
-      <Link href="/" className="brand" data-testid="link-brand-home" aria-label="Vanity BTC home">
-        <span className="brand-mark"><Bitcoin aria-hidden="true" /></span>
-        <span>Vanity / BTC</span>
+      <Link href="/" className="brand" data-testid="link-brand-home" aria-label="IS LUCKY BTC home">
+        <span className="brand-mark"><span className="brand-mark-initials" aria-hidden="true">IS</span></span>
+        <span>IS LUCKY BTC ♧</span>
       </Link>
       <nav className="site-nav" aria-label="Main navigation">
         <Link

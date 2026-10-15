@@ -52,6 +52,10 @@
 .balance-upload-button, .balance-start-button, .balance-download-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px; padding: 0 13px; border: 1px solid hsl(var(--border)); border-radius: 7px; background: transparent; color: hsl(var(--foreground)); font-size: 12px; font-weight: 700; cursor: pointer; }
 .balance-upload-button svg, .balance-start-button svg, .balance-download-button svg { width: 16px; height: 16px; }
 .balance-upload-button:hover, .balance-download-button:hover { border-color: #e77732; color: #ffbd72; }
+.balance-clear-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px; padding: 0 13px; border: 1px solid hsl(var(--border)); border-radius: 7px; background: transparent; color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 700; cursor: pointer; }
+.balance-clear-button svg { width: 16px; height: 16px; }
+.balance-clear-button:hover:not(:disabled) { border-color: #cf6d5f; color: #ff9b8f; }
+.balance-clear-button:disabled { cursor: not-allowed; opacity: .5; }
 .balance-upload-button input { display: none; }
 .balance-start-button { border-color: #e77732; background: #e77732; color: white; }
 .balance-start-button:hover:not(:disabled) { background: #f08a43; }

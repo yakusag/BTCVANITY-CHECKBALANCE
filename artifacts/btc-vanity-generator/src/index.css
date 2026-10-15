@@ -102,6 +102,7 @@
 .brand-link { color:inherit;text-decoration:none; }
 .brand-mark { width:31px;height:31px;border-radius:9px;background:#e77732;color:#fff;display:grid;place-items:center;box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); }
 .brand-mark svg { width:18px;height:18px; }
+.brand-mark-initials { display:grid;width:22px;height:22px;place-items:center;border:1.5px solid currentColor;border-radius:50%;font:800 9px/1 var(--app-font-display);letter-spacing:0; }
 .site-nav { display:flex;align-items:center;gap:5px;margin-left:auto;margin-right:20px; }
 .site-nav-link { border:1px solid transparent;border-radius:8px;padding:8px 10px;color:#a1a1aa;text-decoration:none;font-size:11px;font-weight:700;transition:color .16s,background .16s,border-color .16s; }
 .site-nav-link:hover { color:#f4f4f5;background:#1d1d1f; }
