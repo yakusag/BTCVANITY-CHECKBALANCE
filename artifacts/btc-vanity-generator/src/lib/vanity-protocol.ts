@@ -2,8 +2,8 @@ import type { AddressFormat } from "./bitcoin";
 
 export type SearchMode = "random" | "range";
 
-export const MAX_RECORDED_RANGE_CANDIDATES = 10_000;
-export const CANDIDATE_BATCH_SIZE = 100;
+export const MAX_RECORDED_RANGE_CANDIDATES = 1 000 000 000 000;
+export const CANDIDATE_BATCH_SIZE = 500;
 
 export type StartSearch = {
   type: "start";
