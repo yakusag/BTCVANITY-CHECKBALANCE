@@ -882,7 +882,7 @@ function Home() {
                   <span>I understand this educational-only scan displays every checked address and full WIF private key here. I will never use these keys to hold funds.</span>
                 </label>
                 {autoResumeEnabled && <p className="hint" role="status" data-testid="status-range-autoresume">Automatic restart is enabled for this tab. Only the original low, last generated high, address format, and block size are saved here; generated addresses and WIF keys are not saved.</p>}
-                <p className="hint">Leave the exact-address and pattern fields blank to generate every key/address from low to high, without looking for a match. The full history stops at 10,000 entries to protect browser memory.</p>
+                <p className="hint">Leave the exact-address and pattern fields blank to generate every key/address from low to high, without looking for a match. The full history stops at 100,000,000,000,000 entries to protect browser memory.</p>
               </div>
             )}
 
