@@ -21,7 +21,7 @@ export default function BitcoinPuzzlePage({ active }: { active: boolean }) {
   const [copyError, setCopyError] = useState(false);
 
   useEffect(() => {
-    if (active) document.title = 'Bitcoin Puzzle | IS LUCKY BTC';
+    if (active) document.title = 'Bitcoin Puzzle | LUCKY BTC';
   }, [active]);
 
   const puzzles = useMemo(() => {

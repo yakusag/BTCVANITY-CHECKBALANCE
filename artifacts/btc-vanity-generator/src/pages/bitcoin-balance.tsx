@@ -97,7 +97,7 @@ export default function BitcoinBalancePage({ active }: { active: boolean }) {
   const [fundedAddresses, setFundedAddresses] = useState<FundedAddress[]>([]);
 
   useEffect(() => {
-    if (active) document.title = 'Bitcoin Balance Check | IS LUCKY BTC';
+    if (active) document.title = 'Bitcoin Balance Check | LUCKY BTC';
   }, [active]);
 
   async function loadFile(file: File | undefined) {

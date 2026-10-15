@@ -147,9 +147,14 @@ function SiteHeader({
 }) {
   return (
     <header className="topbar">
-      <Link href="/" className="brand" data-testid="link-brand-home" aria-label="IS LUCKY BTC home">
-        <span className="brand-mark"><span className="brand-mark-initials" aria-hidden="true">IS</span></span>
-        <span>IS LUCKY BTC ♧</span>
+      <Link href="/" className="brand" data-testid="link-brand-home" aria-label="LUCKY BTC home">
+        <span className="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none">
+            <path d="M8 12h10M13 12v16M8 28h10" />
+            <path d="M31 13c-2.2-1.6-7.3-1.9-9.8.3-3 2.6-.5 5.2 4.2 6.2 4.8 1 6.4 3.4 4.1 6.1-2.3 2.9-8.1 3-11.3 1.3" />
+          </svg>
+        </span>
+        <span>LUCKY BTC</span>
       </Link>
       <nav className="site-nav" aria-label="Main navigation">
         <Link
