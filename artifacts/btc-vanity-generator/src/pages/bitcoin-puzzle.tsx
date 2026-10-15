@@ -1,99 +1,138 @@
-import { useEffect } from 'react';
-import {
-  ArrowUpRight,
-  Bitcoin,
-  Check,
-  CircleAlert,
-  ExternalLink,
-  Layers3,
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Bitcoin, Check, Copy, Search } from 'lucide-react';
 import './bitcoin-puzzle.css';
 
-const PUZZLE_URL = 'https://privatekeyfinder.io/bitcoin-puzzle';
+const PUZZLE_COUNT = 160;
 
-const puzzleStats = [
-  { label: 'Total puzzles', value: '160', icon: Layers3, tone: 'orange' },
-  { label: 'Solved', value: '83', icon: Check, tone: 'green' },
-  { label: 'Unsolved', value: '77', icon: CircleAlert, tone: 'blue' },
-] as const;
+function getPuzzleRange(number: number) {
+  const start = 1n << BigInt(number - 1);
+  const end = (1n << BigInt(number)) - 1n;
+  const hexWidth = Math.ceil(number / 4);
+
+  return {
+    startHex: start.toString(16).padStart(hexWidth, '0'),
+    endHex: end.toString(16).padStart(hexWidth, '0'),
+  };
+}
 
 export default function BitcoinPuzzlePage({ active }: { active: boolean }) {
+  const [query, setQuery] = useState('');
+  const [copiedPuzzle, setCopiedPuzzle] = useState<number | null>(null);
+  const [copyError, setCopyError] = useState(false);
+
   useEffect(() => {
     if (active) document.title = 'Bitcoin Puzzle | Vanity / BTC';
   }, [active]);
+
+  const puzzles = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return Array.from({ length: PUZZLE_COUNT }, (_, index) => {
+      const number = index + 1;
+      return { number, ...getPuzzleRange(number) };
+    }).filter(({ number, startHex, endHex }) => {
+      if (!normalizedQuery) return true;
+      const keyQuery = normalizedQuery.replace(/^0x/, '');
+      return (
+        String(number).includes(normalizedQuery) ||
+        startHex.includes(keyQuery) ||
+        endHex.includes(keyQuery)
+      );
+    });
+  }, [query]);
+
+  async function copyRange(number: number, startHex: string, endHex: string) {
+    try {
+      await navigator.clipboard.writeText(`${startHex} - ${endHex}`);
+      setCopiedPuzzle(number);
+      setCopyError(false);
+      window.setTimeout(() => setCopiedPuzzle(null), 1600);
+    } catch {
+      setCopyError(true);
+    }
+  }
 
   return (
     <main className="puzzle-ref-page" data-testid="page-bitcoin-puzzle">
       <section className="puzzle-ref-intro" aria-labelledby="puzzle-ref-title">
         <div className="puzzle-ref-kicker">
           <Bitcoin aria-hidden="true" />
-          Public challenge index
+          Local puzzle index
         </div>
         <h1 id="puzzle-ref-title">Bitcoin Puzzle Challenge</h1>
         <p>
-          A quick overview of the public Bitcoin puzzle challenge. The source
-          site hosts the current puzzle entries and progress.
+          Browse all 160 public puzzle ranges here. Search by puzzle number or
+          hexadecimal key, then copy a range without leaving this site.
         </p>
-      </section>
-
-      <section className="puzzle-ref-stats" aria-label="Puzzle counts reported by the source">
-        {puzzleStats.map(({ label, value, icon: Icon, tone }) => (
-          <article className="puzzle-ref-stat" key={label}>
-            <div className={`puzzle-ref-stat-icon is-${tone}`}>
-              <Icon aria-hidden="true" />
-            </div>
-            <div>
-              <p>{label}</p>
-              <strong>{value}</strong>
-            </div>
-          </article>
-        ))}
       </section>
 
       <section className="puzzle-ref-board" aria-labelledby="puzzle-ref-board-title">
         <div className="puzzle-ref-board-head">
           <div>
             <p className="puzzle-ref-label">PUZZLE INDEX</p>
-            <h2 id="puzzle-ref-board-title">Explore the challenge list</h2>
+            <h2 id="puzzle-ref-board-title">All puzzle ranges</h2>
           </div>
-          <span className="puzzle-ref-source-badge">
+          <span className="puzzle-ref-count">
             <span aria-hidden="true" />
-            Source-hosted
+            {puzzles.length} of {PUZZLE_COUNT} puzzles
           </span>
         </div>
-        <p className="puzzle-ref-copy">
-          The listing and its addresses, ranges, and status are maintained on
-          PrivateKeyFinder. Open the source for the latest entries.
-        </p>
-        <div className="puzzle-ref-columns" aria-hidden="true">
-          <span>Puzzle details</span>
-          <span>Status</span>
-          <span>Source</span>
+        <label className="puzzle-ref-search">
+          <Search aria-hidden="true" />
+          <span className="sr-only">Search puzzles by number or key</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search puzzle number or hex key"
+            inputMode="search"
+            data-testid="input-puzzle-search"
+          />
+        </label>
+        <div className="puzzle-ref-table-wrap">
+          <table className="puzzle-ref-table">
+            <thead>
+              <tr>
+                <th scope="col">Puzzle</th>
+                <th scope="col">Private key range (hex)</th>
+                <th scope="col">Key size</th>
+                <th scope="col"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {puzzles.map(({ number, startHex, endHex }) => (
+                <tr key={number} data-testid={`row-puzzle-${number}`}>
+                  <th scope="row">#{number}</th>
+                  <td className="puzzle-ref-range">
+                    <code>{startHex}</code>
+                    <span aria-hidden="true"> - </span>
+                    <code>{endHex}</code>
+                  </td>
+                  <td>{number} bit{number === 1 ? '' : 's'}</td>
+                  <td className="puzzle-ref-action">
+                    <button
+                      type="button"
+                      onClick={() => void copyRange(number, startHex, endHex)}
+                      aria-label={`Copy key range for puzzle ${number}`}
+                      title={`Copy range for puzzle ${number}`}
+                      data-testid={`button-copy-puzzle-${number}`}
+                    >
+                      {copiedPuzzle === number ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {puzzles.length === 0 && (
+            <p className="puzzle-ref-empty">No puzzles match that search.</p>
+          )}
         </div>
-        <div className="puzzle-ref-source-card">
-          <div className="puzzle-ref-card-icon" aria-hidden="true">
-            <ExternalLink />
-          </div>
-          <div className="puzzle-ref-source-copy">
-            <h3>View the live Bitcoin puzzle index</h3>
-            <p>
-              This page is a visual overview only; it does not search key
-              ranges or check wallet balances.
-            </p>
-          </div>
-          <a
-            className="puzzle-ref-link"
-            href={PUZZLE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid="link-external-bitcoin-puzzle"
-          >
-            Open source
-            <ArrowUpRight aria-hidden="true" />
-          </a>
-        </div>
-        <p className="puzzle-ref-note">
-          Counts shown above are a snapshot from PrivateKeyFinder and may change.
+        <p className="puzzle-ref-note" role="status" aria-live="polite">
+          {copyError
+            ? 'Clipboard access is unavailable in this browser.'
+            : copiedPuzzle
+              ? `Puzzle ${copiedPuzzle} range copied.`
+              : 'Key ranges are calculated locally from each puzzle number.'}
         </p>
       </section>
     </main>

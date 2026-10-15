@@ -244,6 +244,7 @@ function Home() {
     Boolean(initialResume),
   );
   const [rangeAccepted, setRangeAccepted] = useState(Boolean(initialResume));
+  const [autoContinueRange, setAutoContinueRange] = useState(true);
   const [autoResumeEnabled, setAutoResumeEnabled] = useState(
     Boolean(initialResume),
   );
@@ -274,6 +275,7 @@ function Home() {
   const [priceState, setPriceState] = useState<'loading' | 'ready' | 'error'>('loading');
   const formRef = useRef<HTMLFormElement>(null);
   const workerRef = useRef<Worker | null>(null);
+  const autoContinueRangeRef = useRef(true);
 
   const searching = searchStatus === 'running' || searchStatus === 'stopping';
   const historyPageSize = 100;
@@ -632,8 +634,9 @@ function Home() {
               setContinuationBatchSize(runBatchSize.toString());
               setSearchStatus('generated');
               setNotice(
-                `Generated ${message.attempts.toLocaleString()} addresses and WIF keys. The next same-size block is ready: ${nextRange.startHex}–${nextRange.endHex}.${persistenceNotice ? ` ${persistenceNotice}` : ''}`,
+                `Generated ${message.attempts.toLocaleString()} addresses and WIF keys. Next block: ${nextRange.startHex}–${nextRange.endHex}.${persistenceNotice ? ` ${persistenceNotice}` : ''}`,
               );
+              if (autoContinueRangeRef.current) setAutoResumePending(true);
               setHistoryPage(
                 isContinuation
                   ? Math.floor((totalRecordCount - 1) / historyPageSize)
@@ -697,6 +700,7 @@ function Home() {
         endHex: rangeEnd,
         generateOnly,
         candidateLimit: mode === 'range' ? candidateLimit : undefined,
+        candidateOffset: existingRecordCount,
         workerCount: cpuWorkers,
       });
     } catch {
@@ -881,6 +885,19 @@ function Home() {
                   <input type="checkbox" disabled={searching} checked={rangeAccepted} onChange={(event) => setRangeAccepted(event.target.checked)} data-testid="checkbox-range-risk" />
                   <span>I understand this educational-only scan displays every checked address and full WIF private key here. I will never use these keys to hold funds.</span>
                 </label>
+                <label className="confirm-row">
+                  <input
+                    type="checkbox"
+                    checked={autoContinueRange}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      autoContinueRangeRef.current = checked;
+                      setAutoContinueRange(checked);
+                    }}
+                    data-testid="checkbox-auto-continue-range"
+                  />
+                  <span>Automatically generate the next same-size block when this block finishes. Turn this off to pause after the current block.</span>
+                </label>
                 {autoResumeEnabled && <p className="hint" role="status" data-testid="status-range-autoresume">Automatic restart is enabled for this tab. Only the original low, last generated high, address format, and block size are saved here; generated addresses and WIF keys are not saved.</p>}
                 <p className="hint">Leave the exact-address and pattern fields blank to generate every key/address from low to high, without looking for a match. The full history stops at 100,000,000,000,000 entries to protect browser memory.</p>
               </div>
@@ -1023,7 +1040,7 @@ function Router() {
       </div>
       <div hidden={!isBitcoinPuzzle} className="app-shell">
         <SiteHeader activePage="puzzle">
-          <span>PUZZLE REFERENCE</span>
+          <span>LOCAL PUZZLE INDEX</span>
         </SiteHeader>
         <BitcoinPuzzlePage active={isBitcoinPuzzle} />
       </div>
