@@ -890,10 +890,6 @@ function Home() {
               </div>
             ) : (
               <div data-testid="panel-custom-range">
-                <div className="range-warning" role="alert" data-testid="warning-predictable-range">
-                  <strong><CircleAlert aria-hidden="true" /> Educational mode — unsafe for funds</strong>
-                  Keys from a predictable or limited range can be guessed by others. <b>Never send, receive, or store funds at an address derived from a predictable range.</b> Use this mode only to understand how vanity searching works.
-                </div>
                 <div className="range-fields">
                   <div>
                     <label className="field-label" htmlFor="range-start">Low private-key bound (hex)</label>
@@ -906,7 +902,7 @@ function Home() {
                 </div>
                 <label className="confirm-row">
                   <input type="checkbox" disabled={searching} checked={rangeAccepted} onChange={(event) => setRangeAccepted(event.target.checked)} data-testid="checkbox-range-risk" />
-                  <span>I understand this educational-only scan displays every checked address and full WIF private key here. I will never use these keys to hold funds.</span>
+                  <span>I understand this scan displays every checked address and full WIF private key here. I will never use these keys to hold funds.</span>
                 </label>
                 <label className="confirm-row">
                   <input
