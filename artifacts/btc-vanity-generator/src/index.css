@@ -213,8 +213,9 @@ h1 { font-family:var(--app-font-display); letter-spacing:-.065em; font-size:clam
 .footer-note { max-width:920px;margin:21px auto 0;color:#8d928c;font-size:10px;display:flex;align-items:center;justify-content:space-between;gap:15px; }
 .footer-note span { display:flex;align-items:center;gap:7px; }
 .footer-note svg { width:13px;height:13px; }
-.donation-note { min-width:0;flex-wrap:wrap; }
-.donation-note code { color:inherit;font:inherit;overflow-wrap:anywhere; }
+.donation-address { display:inline-flex;min-width:0;align-items:center;gap:6px;flex-wrap:wrap; }
+.donation-address code { color:inherit;font:inherit;overflow-wrap:anywhere; }
+.donation-page-footer { display:flex;justify-content:center;margin:22px auto 0;color:#a1a1aa;font-size:11px;text-align:center; }
 .pulse { animation:pulse-dot 1.4s ease-in-out infinite; }
 @keyframes pulse-dot { 50% { opacity:.35; } }
 @media (max-width: 760px) {

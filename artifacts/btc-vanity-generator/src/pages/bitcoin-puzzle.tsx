@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bitcoin, Check, Copy, Search } from 'lucide-react';
+import DonationAddress from '@/components/donation-address';
 import './bitcoin-puzzle.css';
 
 const PUZZLE_COUNT = 160;
@@ -135,6 +136,9 @@ export default function BitcoinPuzzlePage({ active }: { active: boolean }) {
               : 'Key ranges are calculated locally from each puzzle number.'}
         </p>
       </section>
+      <footer className="donation-page-footer">
+        <DonationAddress />
+      </footer>
     </main>
   );
 }

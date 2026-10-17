@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import DonationAddress from '@/components/donation-address';
 import {
   AlertCircle,
   Check,
@@ -375,6 +376,9 @@ export default function BitcoinBalancePage({ active }: { active: boolean }) {
           )}
         </section>
       </section>
+      <footer className="donation-page-footer">
+        <DonationAddress />
+      </footer>
     </main>
   );
 }
