@@ -12,6 +12,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import BitcoinPuzzlePage from '@/pages/bitcoin-puzzle';
 import BitcoinBalancePage from '@/pages/bitcoin-balance';
+import { queueBalanceCheck } from '@/lib/balance-check-transfer';
 import {
   ArrowUpRight,
   Bitcoin,
@@ -231,6 +232,7 @@ function clearRangeResumeSettings(): boolean {
 }
 
 function Home() {
+  const [, setLocation] = useLocation();
   const maxCpuWorkers = getMaxCpuWorkers();
   const [cpuWorkers, setCpuWorkers] = useState(maxCpuWorkers);
   const [resumeLoad] = useState(readRangeResumeSettings);
@@ -370,6 +372,12 @@ function Home() {
     } catch {
       setNotice('Clipboard access is unavailable in this browser.');
     }
+  };
+
+  const checkGeneratedBalances = () => {
+    if (candidateRecords.length === 0 || searching || autoResumePending) return;
+    queueBalanceCheck(candidateRecords.map((record) => record.address));
+    setLocation('/balance-check');
   };
 
   const downloadAddressesCsv = () => {
@@ -1022,6 +1030,7 @@ function Home() {
               </table>
             </div>
             <div className="history-pagination">
+              <button className="small-button download-addresses-button" type="button" disabled={searching || autoResumePending} onClick={checkGeneratedBalances} data-testid="button-check-generated-balances"><ArrowUpRight aria-hidden="true" /> Check generated balances</button>
               <button className="small-button download-addresses-button" type="button" onClick={() => void copyAllAddresses()} data-testid="button-copy-all-addresses"><Copy aria-hidden="true" /> Copy all addresses</button>
               <button className="small-button download-addresses-button" type="button" onClick={downloadAddressesCsv} data-testid="button-download-addresses-csv"><Download aria-hidden="true" /> Download addresses CSV</button>
               <button className="small-button download-addresses-button" type="button" onClick={downloadAddressesTxt} data-testid="button-download-addresses-txt"><Download aria-hidden="true" /> Download addresses TXT</button>

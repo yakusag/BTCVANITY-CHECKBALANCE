@@ -10,6 +10,7 @@ import {
   Square,
 } from 'lucide-react';
 import { isValidMainnetBitcoinAddress } from '@/lib/bitcoin';
+import { takeQueuedBalanceCheck } from '@/lib/balance-check-transfer';
 import './bitcoin-balance.css';
 
 const MAX_ADDRESSES = 1_000_000;
@@ -98,6 +99,20 @@ export default function BitcoinBalancePage({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (active) document.title = 'Bitcoin Balance Check | LUCKY BTC';
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return;
+    const addresses = takeQueuedBalanceCheck();
+    if (!addresses) return;
+    if (!inputRef.current) {
+      setStatus('error');
+      setNotice('Could not load the generated addresses into the balance checker.');
+      return;
+    }
+    inputRef.current.value = addresses.join('\n');
+    setFileName('');
+    void startCheck();
   }, [active]);
 
   async function loadFile(file: File | undefined) {
