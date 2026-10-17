@@ -1044,6 +1044,11 @@ function Home() {
 
         <footer className="footer-note">
           <span><KeyRound aria-hidden="true" /> Never share a private key. Anyone who has it can spend the funds.</span>
+          <span className="donation-note">
+            BTC donations: <span aria-hidden="true">❤️</span>{' '}
+            <code>bc1q3y8gptm8v6twr6wk753fpux52n4jtp06x3zlfl</code>{' '}
+            <span aria-hidden="true">❤️</span>
+          </span>
           <span><LockKeyhole aria-hidden="true" /> No login · no cloud storage</span>
         </footer>
       </main>
