@@ -2,6 +2,7 @@
 
 import {
   deriveBitcoinAddress,
+  deriveBitcoinAddressOnly,
   PRIVATE_KEY_LIMIT,
   privateKeyFromRangeValue,
   randomPrivateKey,
@@ -157,12 +158,20 @@ worker.onmessage = (event) => {
             options.mode === "range"
               ? privateKeyFromRangeValue(cursor++)
               : randomPrivateKey();
-          const result = deriveBitcoinAddress(key, options.format);
+          const result =
+            options.mode === "range"
+              ? deriveBitcoinAddress(key, options.format)
+              : undefined;
+          const address =
+            result?.address ?? deriveBitcoinAddressOnly(key, options.format);
           attempts += 1;
           if (options.mode === "range") {
+            if (!result) {
+              throw new Error("Could not derive the generated private key.");
+            }
             pendingCandidates.push({
               index: (options.candidateOffset ?? 0) + attempts,
-              address: result.address,
+              address,
               privateKeyWif: result.privateKeyWif,
             });
             if (pendingCandidates.length >= CANDIDATE_BATCH_SIZE) {
@@ -173,7 +182,7 @@ worker.onmessage = (event) => {
           if (
             !options.generateOnly &&
             matches(
-              result.address,
+              address,
               options.prefix,
               options.suffix,
               options.targetAddress ?? "",
@@ -184,7 +193,7 @@ worker.onmessage = (event) => {
               type: "found",
               attempts,
               elapsedMs: Math.max(1, performance.now() - startedAt),
-              result,
+              result: result ?? deriveBitcoinAddress(key, options.format),
             });
             return;
           }

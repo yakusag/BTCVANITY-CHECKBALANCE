@@ -18,6 +18,7 @@ const MAX_ADDRESSES = 1_000_000;
 const MAX_FILE_BYTES = 64 * 1024 * 1024;
 const ADDRESSES_PER_REQUEST = 100;
 const MAX_CONCURRENT_REQUESTS = 2;
+const UI_UPDATE_INTERVAL_MS = 500;
 const BALANCE_API = 'https://blockchain.info/balance';
 
 type ApiBalance = { final_balance?: number };
@@ -207,7 +208,10 @@ export default function BitcoinBalancePage({ active }: { active: boolean }) {
 
         checked += batch.length;
         const now = Date.now();
-        if (now - lastUiUpdate >= 200 || checked === validAddresses.length) {
+        if (
+          now - lastUiUpdate >= UI_UPDATE_INTERVAL_MS ||
+          checked === validAddresses.length
+        ) {
           lastUiUpdate = now;
           setCheckedCount(checked);
           setFundedAddresses([...funded]);

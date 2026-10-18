@@ -103,6 +103,28 @@ function base58Check(value: Uint8Array): string {
   return base58Encode(payload);
 }
 
+function getPublicKeyHash(privateKey: Uint8Array): Uint8Array {
+  if (privateKey.length !== 32) {
+    throw new Error("Private key must be exactly 32 bytes.");
+  }
+
+  const scalar = bytesToBigInt(privateKey);
+  if (scalar < 1n || scalar >= PRIVATE_KEY_LIMIT) {
+    throw new Error("Private key is outside the valid secp256k1 range.");
+  }
+
+  return hash160(secp256k1.getPublicKey(privateKey, true));
+}
+
+function addressFromPublicKeyHash(
+  publicKeyHash: Uint8Array,
+  format: AddressFormat,
+): string {
+  return format === "legacy"
+    ? base58Check(Uint8Array.of(0x00, ...publicKeyHash))
+    : segwitAddress(publicKeyHash);
+}
+
 function convertBits(
   data: Uint8Array,
   fromBits: number,
@@ -290,24 +312,8 @@ export function deriveBitcoinAddress(
   privateKey: Uint8Array,
   format: AddressFormat,
 ): { address: string; privateKeyWif: string; privateKeyHex: string } {
-  if (privateKey.length !== 32) {
-    throw new Error("Private key must be exactly 32 bytes.");
-  }
-
-  const scalar = bytesToBigInt(privateKey);
-  if (scalar < 1n || scalar >= PRIVATE_KEY_LIMIT) {
-    throw new Error("Private key is outside the valid secp256k1 range.");
-  }
-
-  const publicKey = secp256k1.getPublicKey(privateKey, true);
-  const publicKeyHash = hash160(publicKey);
-  let address: string;
-
-  if (format === "legacy") {
-    address = base58Check(Uint8Array.of(0x00, ...publicKeyHash));
-  } else {
-    address = segwitAddress(publicKeyHash);
-  }
+  const publicKeyHash = getPublicKeyHash(privateKey);
+  const address = addressFromPublicKeyHash(publicKeyHash, format);
 
   const wifPayload = new Uint8Array(34);
   wifPayload[0] = 0x80;
@@ -319,6 +325,13 @@ export function deriveBitcoinAddress(
     privateKeyWif: base58Check(wifPayload),
     privateKeyHex: privateKeyToHex(privateKey),
   };
+}
+
+export function deriveBitcoinAddressOnly(
+  privateKey: Uint8Array,
+  format: AddressFormat,
+): string {
+  return addressFromPublicKeyHash(getPublicKeyHash(privateKey), format);
 }
 
 export function privateKeyFromRangeValue(value: bigint): Uint8Array {
