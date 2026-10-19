@@ -32,6 +32,8 @@ export type CandidateRecord = {
   index: number;
   address: string;
   privateKeyWif: string;
+  rangeStartHex: string;
+  rangeEndHex: string;
 };
 
 export type WorkerResponse =

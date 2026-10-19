@@ -13,7 +13,9 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import BitcoinPuzzlePage from '@/pages/bitcoin-puzzle';
 import BitcoinBalancePage from '@/pages/bitcoin-balance';
+import BitcoinRangeLookupPage from '@/pages/bitcoin-range-lookup';
 import { queueBalanceCheck } from '@/lib/balance-check-transfer';
+import { rememberGeneratedAddressRanges } from '@/lib/range-lookup-index';
 import {
   ArrowUpRight,
   Bitcoin,
@@ -144,7 +146,7 @@ function SiteHeader({
   activePage,
   children,
 }: {
-  activePage: 'generator' | 'puzzle' | 'balance';
+  activePage: 'generator' | 'puzzle' | 'balance' | 'range-lookup';
   children: ReactNode;
 }) {
   return (
@@ -182,6 +184,14 @@ function SiteHeader({
           data-testid="link-balance-check"
         >
           Balance Check
+        </Link>
+        <Link
+          href="/range-lookup"
+          className={`site-nav-link ${activePage === 'range-lookup' ? 'active' : ''}`}
+          aria-current={activePage === 'range-lookup' ? 'page' : undefined}
+          data-testid="link-range-lookup"
+        >
+          Range Lookup
         </Link>
       </nav>
       <div className="top-meta">{children}</div>
@@ -575,6 +585,7 @@ function Home() {
         if ('elapsedMs' in message) setElapsedMs(message.elapsedMs);
 
         if (message.type === 'candidates') {
+          rememberGeneratedAddressRanges(message.candidates);
           setCandidateRecords((previous) => [
             ...previous,
             ...message.candidates,
@@ -1054,6 +1065,7 @@ function Router() {
   const isHome = location === '/';
   const isBitcoinPuzzle = location === '/bitcoin-puzzle';
   const isBitcoinBalance = location === '/balance-check';
+  const isBitcoinRangeLookup = location === '/range-lookup';
 
   return (
     <RoutedErrorBoundary>
@@ -1072,7 +1084,13 @@ function Router() {
         </SiteHeader>
         <BitcoinBalancePage active={isBitcoinBalance} />
       </div>
-      {!isHome && !isBitcoinPuzzle && !isBitcoinBalance && (
+      <div hidden={!isBitcoinRangeLookup} className="app-shell">
+        <SiteHeader activePage="range-lookup">
+          <span>LOCAL RANGE LOOKUP</span>
+        </SiteHeader>
+        <BitcoinRangeLookupPage active={isBitcoinRangeLookup} />
+      </div>
+      {!isHome && !isBitcoinPuzzle && !isBitcoinBalance && !isBitcoinRangeLookup && (
         <Switch>
           <Route component={NotFound} />
         </Switch>

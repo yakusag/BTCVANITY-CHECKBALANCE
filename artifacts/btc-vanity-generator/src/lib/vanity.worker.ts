@@ -173,6 +173,8 @@ worker.onmessage = (event) => {
               index: (options.candidateOffset ?? 0) + attempts,
               address,
               privateKeyWif: result.privateKeyWif,
+              rangeStartHex: start.toString(16),
+              rangeEndHex: end.toString(16),
             });
             if (pendingCandidates.length >= CANDIDATE_BATCH_SIZE) {
               flushCandidates();
