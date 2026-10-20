@@ -1,3 +1,6 @@
 fastapi
 uvicorn
 coincurve
+requests
+base58
+colorama
