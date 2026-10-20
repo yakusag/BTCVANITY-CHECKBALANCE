@@ -116,6 +116,11 @@
 .eyebrow:before,.eyebrow:after { content:'';width:19px;height:1px;background:#d9a17e; }
 h1 { font-family:var(--app-font-display); letter-spacing:-.065em; font-size:clamp(37px,5vw,58px); line-height:1.04; margin:16px 0 13px; font-weight:800; }
 .intro-copy { color:hsl(var(--muted-foreground)); max-width:560px; font-size:15px; line-height:1.65; margin:0 auto; }
+.self-test { display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:9px;margin-top:16px; }
+.self-test-note { color:hsl(var(--muted-foreground));font-size:11px; }
+.self-test-result { flex-basis:100%;margin:0;font-size:12px; }
+.self-test-result.is-passed { color:#77c69a; }
+.self-test-result.is-failed { color:#f08b83; }
 .workspace { max-width:920px;margin:0 auto; display:grid;grid-template-columns:minmax(0,1fr) 300px; gap:17px; align-items:start; }
 .panel { border:1px solid hsl(var(--border));background:hsl(var(--card));border-radius:15px;box-shadow:var(--shadow); }
 .search-panel { padding:26px 28px 24px; }

@@ -40,6 +40,8 @@ import {
   isValidBitcoinAddressTarget,
   PRIVATE_KEY_LIMIT,
   type AddressFormat,
+  deriveBitcoinAddress,
+  parsePrivateKeyHex,
 } from '@/lib/bitcoin';
 import {
   MAX_RECORDED_RANGE_CANDIDATES,
@@ -280,6 +282,10 @@ function Home() {
     Boolean(initialResume),
   );
   const [notice, setNotice] = useState('');
+  const [selfTestResult, setSelfTestResult] = useState<{
+    passed: boolean;
+    message: string;
+  } | null>(null);
   const [searchStatus, setSearchStatus] = useState<
     | 'ready'
     | 'running'
@@ -316,6 +322,31 @@ function Home() {
     historyStart,
     historyStart + historyPageSize,
   );
+
+  function runSelfTest() {
+    try {
+      const testVector = deriveBitcoinAddress(
+        parsePrivateKeyHex('1'),
+        'legacy',
+      );
+      const addressPassed = testVector.address === '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH';
+      const wifPassed =
+        testVector.privateKeyWif ===
+        'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn';
+
+      setSelfTestResult({
+        passed: addressPassed && wifPassed,
+        message: addressPassed && wifPassed
+          ? 'Self-test passed: address and WIF match the known test vector.'
+          : `Self-test failed: address ${addressPassed ? 'passed' : 'failed'}, WIF ${wifPassed ? 'passed' : 'failed'}.`,
+      });
+    } catch (error) {
+      setSelfTestResult({
+        passed: false,
+        message: `Self-test could not complete: ${error instanceof Error ? error.message : 'Unexpected error.'}`,
+      });
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -791,6 +822,26 @@ function Home() {
           <div className="eyebrow">A tool for your own keys</div>
           <h1>Make an address<br />that feels like yours.</h1>
           <p className="intro-copy">Search locally for a Bitcoin address with a pattern you choose. Your keys stay in this browser—never uploaded, never stored.</p>
+          <div className="self-test">
+            <button
+              className="small-button"
+              type="button"
+              onClick={runSelfTest}
+              data-testid="button-run-self-test"
+            >
+              <ShieldCheck aria-hidden="true" /> Run self-test
+            </button>
+            <span className="self-test-note">Checks address and WIF conversion locally; does not search for keys.</span>
+            {selfTestResult && (
+              <p
+                className={`self-test-result ${selfTestResult.passed ? 'is-passed' : 'is-failed'}`}
+                role="status"
+                data-testid="status-self-test"
+              >
+                {selfTestResult.message}
+              </p>
+            )}
+          </div>
         </section>
 
         <section className="workspace" aria-label="Vanity address search">
