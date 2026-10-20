@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import BitcoinPuzzlePage from '@/pages/bitcoin-puzzle';
+import BitcoinPuzzleAddressLookupPage from '@/pages/bitcoin-puzzle-address-lookup';
 import BitcoinBalancePage from '@/pages/bitcoin-balance';
 import BitcoinRangeLookupPage from '@/pages/bitcoin-range-lookup';
 import { queueBalanceCheck } from '@/lib/balance-check-transfer';
@@ -1064,6 +1065,7 @@ function Router() {
   const [location] = useLocation();
   const isHome = location === '/';
   const isBitcoinPuzzle = location === '/bitcoin-puzzle';
+  const isPuzzleAddressLookup = location === '/puzzle-address-lookup';
   const isBitcoinBalance = location === '/balance-check';
   const isBitcoinRangeLookup = location === '/range-lookup';
 
@@ -1078,6 +1080,12 @@ function Router() {
         </SiteHeader>
         <BitcoinPuzzlePage active={isBitcoinPuzzle} />
       </div>
+      <div hidden={!isPuzzleAddressLookup} className="app-shell">
+        <SiteHeader activePage="puzzle">
+          <span>PUZZLE ADDRESS LOOKUP</span>
+        </SiteHeader>
+        <BitcoinPuzzleAddressLookupPage active={isPuzzleAddressLookup} />
+      </div>
       <div hidden={!isBitcoinBalance} className="app-shell">
         <SiteHeader activePage="balance">
           <span>BULK BALANCE CHECK</span>
@@ -1090,7 +1098,7 @@ function Router() {
         </SiteHeader>
         <BitcoinRangeLookupPage active={isBitcoinRangeLookup} />
       </div>
-      {!isHome && !isBitcoinPuzzle && !isBitcoinBalance && !isBitcoinRangeLookup && (
+      {!isHome && !isBitcoinPuzzle && !isPuzzleAddressLookup && !isBitcoinBalance && !isBitcoinRangeLookup && (
         <Switch>
           <Route component={NotFound} />
         </Switch>

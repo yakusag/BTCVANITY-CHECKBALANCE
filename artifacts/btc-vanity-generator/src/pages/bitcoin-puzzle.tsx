@@ -1,20 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bitcoin, Check, Copy, Search } from 'lucide-react';
+import { Link } from 'wouter';
 import DonationAddress from '@/components/donation-address';
+import { BITCOIN_PUZZLE_COUNT, getBitcoinPuzzleRange } from '@/lib/bitcoin-puzzle';
 import './bitcoin-puzzle.css';
-
-const PUZZLE_COUNT = 160;
-
-function getPuzzleRange(number: number) {
-  const start = 1n << BigInt(number - 1);
-  const end = (1n << BigInt(number)) - 1n;
-  const hexWidth = Math.ceil(number / 4);
-
-  return {
-    startHex: start.toString(16).padStart(hexWidth, '0'),
-    endHex: end.toString(16).padStart(hexWidth, '0'),
-  };
-}
 
 export default function BitcoinPuzzlePage({ active }: { active: boolean }) {
   const [query, setQuery] = useState('');
@@ -27,9 +16,9 @@ export default function BitcoinPuzzlePage({ active }: { active: boolean }) {
 
   const puzzles = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return Array.from({ length: PUZZLE_COUNT }, (_, index) => {
+    return Array.from({ length: BITCOIN_PUZZLE_COUNT }, (_, index) => {
       const number = index + 1;
-      return { number, ...getPuzzleRange(number) };
+      return { number, ...getBitcoinPuzzleRange(number) };
     }).filter(({ number, startHex, endHex }) => {
       if (!normalizedQuery) return true;
       const keyQuery = normalizedQuery.replace(/^0x/, '');
@@ -61,9 +50,18 @@ export default function BitcoinPuzzlePage({ active }: { active: boolean }) {
         </div>
         <h1 id="puzzle-ref-title">Bitcoin Puzzle Challenge</h1>
         <p>
-          Browse all 160 public puzzle ranges here. Search by puzzle number or
-          hexadecimal key, then copy a range without leaving this site.
+          Browse all {BITCOIN_PUZZLE_COUNT} public puzzle ranges here. Search by
+          puzzle number or hexadecimal key, then copy a range without leaving
+          this site.
         </p>
+        <Link
+          className="puzzle-ref-link puzzle-address-lookup-link"
+          href="/puzzle-address-lookup"
+          data-testid="link-puzzle-address-lookup"
+        >
+          <Search aria-hidden="true" />
+          Find range by address
+        </Link>
       </section>
 
       <section className="puzzle-ref-board" aria-labelledby="puzzle-ref-board-title">
@@ -74,7 +72,7 @@ export default function BitcoinPuzzlePage({ active }: { active: boolean }) {
           </div>
           <span className="puzzle-ref-count">
             <span aria-hidden="true" />
-            {puzzles.length} of {PUZZLE_COUNT} puzzles
+            {puzzles.length} of {BITCOIN_PUZZLE_COUNT} puzzles
           </span>
         </div>
         <label className="puzzle-ref-search">

@@ -414,6 +414,10 @@
   transition: background 0.16s ease, transform 0.16s ease;
 }
 
+.puzzle-address-lookup-link {
+  margin-top: 22px;
+}
+
 .puzzle-ref-link:hover {
   transform: translateY(-1px);
   background: #f08a43;
