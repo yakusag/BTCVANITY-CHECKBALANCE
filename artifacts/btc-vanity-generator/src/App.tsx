@@ -15,6 +15,7 @@ import BitcoinPuzzlePage from '@/pages/bitcoin-puzzle';
 import BitcoinPuzzleAddressLookupPage from '@/pages/bitcoin-puzzle-address-lookup';
 import BitcoinBalancePage from '@/pages/bitcoin-balance';
 import BitcoinRangeLookupPage from '@/pages/bitcoin-range-lookup';
+import SelfTestPage from '@/pages/self-test';
 import { queueBalanceCheck } from '@/lib/balance-check-transfer';
 import { rememberGeneratedAddressRanges } from '@/lib/range-lookup-index';
 import {
@@ -40,8 +41,6 @@ import {
   isValidBitcoinAddressTarget,
   PRIVATE_KEY_LIMIT,
   type AddressFormat,
-  deriveBitcoinAddress,
-  parsePrivateKeyHex,
 } from '@/lib/bitcoin';
 import {
   MAX_RECORDED_RANGE_CANDIDATES,
@@ -149,7 +148,7 @@ function SiteHeader({
   activePage,
   children,
 }: {
-  activePage: 'generator' | 'puzzle' | 'balance' | 'range-lookup';
+  activePage: 'generator' | 'puzzle' | 'balance' | 'range-lookup' | 'self-test';
   children: ReactNode;
 }) {
   return (
@@ -195,6 +194,14 @@ function SiteHeader({
           data-testid="link-range-lookup"
         >
           Range Lookup
+        </Link>
+        <Link
+          href="/self-test"
+          className={`site-nav-link ${activePage === 'self-test' ? 'active' : ''}`}
+          aria-current={activePage === 'self-test' ? 'page' : undefined}
+          data-testid="link-self-test"
+        >
+          Self-test
         </Link>
       </nav>
       <div className="top-meta">{children}</div>
@@ -282,10 +289,6 @@ function Home() {
     Boolean(initialResume),
   );
   const [notice, setNotice] = useState('');
-  const [selfTestResult, setSelfTestResult] = useState<{
-    passed: boolean;
-    message: string;
-  } | null>(null);
   const [searchStatus, setSearchStatus] = useState<
     | 'ready'
     | 'running'
@@ -322,31 +325,6 @@ function Home() {
     historyStart,
     historyStart + historyPageSize,
   );
-
-  function runSelfTest() {
-    try {
-      const testVector = deriveBitcoinAddress(
-        parsePrivateKeyHex('1'),
-        'legacy',
-      );
-      const addressPassed = testVector.address === '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH';
-      const wifPassed =
-        testVector.privateKeyWif ===
-        'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn';
-
-      setSelfTestResult({
-        passed: addressPassed && wifPassed,
-        message: addressPassed && wifPassed
-          ? 'Self-test passed: address and WIF match the known test vector.'
-          : `Self-test failed: address ${addressPassed ? 'passed' : 'failed'}, WIF ${wifPassed ? 'passed' : 'failed'}.`,
-      });
-    } catch (error) {
-      setSelfTestResult({
-        passed: false,
-        message: `Self-test could not complete: ${error instanceof Error ? error.message : 'Unexpected error.'}`,
-      });
-    }
-  }
 
   useEffect(() => {
     let active = true;
@@ -822,26 +800,6 @@ function Home() {
           <div className="eyebrow">A tool for your own keys</div>
           <h1>Make an address<br />that feels like yours.</h1>
           <p className="intro-copy">Search locally for a Bitcoin address with a pattern you choose. Your keys stay in this browser—never uploaded, never stored.</p>
-          <div className="self-test">
-            <button
-              className="small-button"
-              type="button"
-              onClick={runSelfTest}
-              data-testid="button-run-self-test"
-            >
-              <ShieldCheck aria-hidden="true" /> Run self-test
-            </button>
-            <span className="self-test-note">Checks address and WIF conversion locally; does not search for keys.</span>
-            {selfTestResult && (
-              <p
-                className={`self-test-result ${selfTestResult.passed ? 'is-passed' : 'is-failed'}`}
-                role="status"
-                data-testid="status-self-test"
-              >
-                {selfTestResult.message}
-              </p>
-            )}
-          </div>
         </section>
 
         <section className="workspace" aria-label="Vanity address search">
@@ -1119,6 +1077,7 @@ function Router() {
   const isPuzzleAddressLookup = location === '/puzzle-address-lookup';
   const isBitcoinBalance = location === '/balance-check';
   const isBitcoinRangeLookup = location === '/range-lookup';
+  const isSelfTest = location === '/self-test';
 
   return (
     <RoutedErrorBoundary>
@@ -1149,7 +1108,13 @@ function Router() {
         </SiteHeader>
         <BitcoinRangeLookupPage active={isBitcoinRangeLookup} />
       </div>
-      {!isHome && !isBitcoinPuzzle && !isPuzzleAddressLookup && !isBitcoinBalance && !isBitcoinRangeLookup && (
+      <div hidden={!isSelfTest} className="app-shell">
+        <SiteHeader activePage="self-test">
+          <span>LOCAL DIAGNOSTICS</span>
+        </SiteHeader>
+        <SelfTestPage />
+      </div>
+      {!isHome && !isBitcoinPuzzle && !isPuzzleAddressLookup && !isBitcoinBalance && !isBitcoinRangeLookup && !isSelfTest && (
         <Switch>
           <Route component={NotFound} />
         </Switch>
