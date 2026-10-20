@@ -7,8 +7,15 @@ import {
 
 type SelfTestResult = {
   passed: boolean;
-  message: string;
+  addressPassed: boolean;
+  address: string;
+  expectedAddress: string;
+  wifPassed: boolean;
+  error?: string;
 };
+
+const EXPECTED_ADDRESS = '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH';
+const EXPECTED_WIF = 'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn';
 
 export default function SelfTestPage() {
   const [result, setResult] = useState<SelfTestResult | null>(null);
@@ -19,22 +26,24 @@ export default function SelfTestPage() {
         parsePrivateKeyHex('1'),
         'legacy',
       );
-      const addressPassed =
-        testVector.address === '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH';
-      const wifPassed =
-        testVector.privateKeyWif ===
-        'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn';
+      const addressPassed = testVector.address === EXPECTED_ADDRESS;
+      const wifPassed = testVector.privateKeyWif === EXPECTED_WIF;
 
       setResult({
         passed: addressPassed && wifPassed,
-        message: addressPassed && wifPassed
-          ? 'Self-test passed: address and WIF match the known test vector.'
-          : `Self-test failed: address ${addressPassed ? 'passed' : 'failed'}, WIF ${wifPassed ? 'passed' : 'failed'}.`,
+        addressPassed,
+        address: testVector.address,
+        expectedAddress: EXPECTED_ADDRESS,
+        wifPassed,
       });
     } catch (error) {
       setResult({
         passed: false,
-        message: `Self-test could not complete: ${error instanceof Error ? error.message : 'Unexpected error.'}`,
+        addressPassed: false,
+        address: 'Unavailable',
+        expectedAddress: EXPECTED_ADDRESS,
+        wifPassed: false,
+        error: error instanceof Error ? error.message : 'Unexpected error.',
       });
     }
   }
@@ -68,13 +77,40 @@ export default function SelfTestPage() {
             <ShieldCheck aria-hidden="true" /> Run self-test
           </button>
           {result && (
-            <p
-              className={`self-test-result ${result.passed ? 'is-passed' : 'is-failed'}`}
-              role="status"
-              data-testid="status-self-test"
+            <div
+              className={`self-test-details ${result.passed ? 'is-passed' : 'is-failed'}`}
+              data-testid="panel-self-test-result"
             >
-              {result.message}
-            </p>
+              <div className="self-test-summary" role="status" data-testid="status-self-test">
+                <span className="self-test-badge">{result.passed ? 'PASS' : 'FAIL'}</span>
+                <span>{result.passed ? 'All checks match the known test vector.' : 'One or more checks need attention.'}</span>
+              </div>
+              {result.error ? (
+                <p className="self-test-error">{result.error}</p>
+              ) : (
+                <>
+                  <div className="self-test-check">
+                    <div className="self-test-check-heading">
+                      <strong>Bitcoin address</strong>
+                      <span className="self-test-check-status">{result.addressPassed ? 'PASS' : 'FAIL'}</span>
+                    </div>
+                    <dl className="self-test-values">
+                      <div><dt>Actual</dt><dd>{result.address}</dd></div>
+                      <div><dt>Expected</dt><dd>{result.expectedAddress}</dd></div>
+                    </dl>
+                  </div>
+                  <div className="self-test-check">
+                    <div className="self-test-check-heading">
+                      <strong>WIF conversion</strong>
+                      <span className="self-test-check-status">{result.wifPassed ? 'PASS' : 'FAIL'}</span>
+                    </div>
+                    <p className="self-test-wif-note">
+                      {result.wifPassed ? 'Generated value matches the expected test vector.' : 'Generated value does not match the expected test vector.'}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       </section>
