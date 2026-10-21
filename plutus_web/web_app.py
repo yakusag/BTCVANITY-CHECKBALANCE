@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# تفعيل CORS باش Vercel تقدر تهضر مع Termux
+# تفعيل CORS باش Vercel توصل مع Termux
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,12 +17,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# تحديد المسار ديال Plutus
-# هنا كناكنقلبو على plutus.py اللي داخل مجلد plutus
-PLUTUS_DIR = Path(__file__).resolve().parent / "plutus"
-PLUTUS_SCRIPT = PLUTUS_DIR / "plutus.py"
+# الكود هنا كيقلب على plutus.py أوتوماتيكيا فـ نفس المجلد أو فـ مجلد plutus
+BASE_DIR = Path(__file__).resolve().parent
+if (BASE_DIR / "plutus.py").exists():
+    PLUTUS_SCRIPT = BASE_DIR / "plutus.py"
+    PLUTUS_CWD = BASE_DIR
+else:
+    PLUTUS_SCRIPT = BASE_DIR / "plutus" / "plutus.py"
+    PLUTUS_CWD = BASE_DIR / "plutus"
 
-# الواجهة البسيطة (HTML) اللي غادي تبان فـ المتصفح
 PAGE = """<!doctype html>
 <html lang="en">
 <head>
@@ -112,7 +115,7 @@ async def stream_search():
 
     current_process = subprocess.Popen(
         [sys.executable, "-u", str(PLUTUS_SCRIPT)],
-        cwd=PLUTUS_DIR,
+        cwd=PLUTUS_CWD,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
