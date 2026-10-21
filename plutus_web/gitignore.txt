@@ -1,0 +1,15 @@
+# Python build and runtime files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.env
+.venv
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
