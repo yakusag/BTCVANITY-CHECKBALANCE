@@ -1,272 +1,139 @@
-# Plutus Bitcoin Brute Forcer
-# Made by Isaac Delly
-# https://github.com/Isaacdelly/Plutus
-
-from coincurve import PrivateKey as CCPrivateKey, PublicKey as CCPublicKey
-import multiprocessing
-from multiprocessing import Value
-import hashlib
-import binascii
-import os
+from pathlib import Path
+import subprocess
 import sys
-import time
-import argparse
+import asyncio
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 
-DATABASE = r'database/12_26_2025/'
-ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+app = FastAPI()
 
-GENERATOR_PUBLIC_KEY = CCPrivateKey(int(1).to_bytes(32, 'big')).public_key
+# تفعيل CORS باش Vercel تقدر تهضر مع Termux
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class BloomFilter:
-    def __init__(self, size_in_mb=256):
-        self.size = size_in_mb * 1024 * 1024 * 8
-        self.bit_array = bytearray(self.size // 8)
-        self.hash_count = 6 
+# تحديد المسار ديال Plutus
+# هنا كناكنقلبو على plutus.py اللي داخل مجلد plutus
+PLUTUS_DIR = Path(__file__).resolve().parent / "plutus"
+PLUTUS_SCRIPT = PLUTUS_DIR / "plutus.py"
 
-    def get_indices(self, string):
-        h = hashlib.sha256(string.encode()).digest()
-        indices = []
-        for i in range(self.hash_count):
-            start = i * 4
-            chunk = h[start : start + 4]
-            val = int.from_bytes(chunk, 'big')
-            indices.append(val % self.size)
-        return indices
-
-    def add(self, string):
-        for index in self.get_indices(string):
-            byte_index = index // 8
-            bit_index = index % 8
-            self.bit_array[byte_index] |= (1 << bit_index)
-
-    def __contains__(self, string):
-        for index in self.get_indices(string):
-            byte_index = index // 8
-            bit_index = index % 8
-            if not (self.bit_array[byte_index] & (1 << bit_index)):
-                return False
-        return True
-
-def generate_private_key():
-    return binascii.hexlify(os.urandom(32)).decode('utf-8').upper()
-
-def private_key_to_public_key(private_key):
-    pk = CCPrivateKey(bytes.fromhex(private_key))
-    return pk.public_key.format(compressed=True)
-
-def public_key_to_address(public_key_bytes):
-    sha256_bpk = hashlib.sha256(public_key_bytes).digest()
-    ripemd160_bpk = hashlib.new('ripemd160', sha256_bpk).digest()
-    prepend_network_byte = b'\x00' + ripemd160_bpk
-    checksum = hashlib.sha256(hashlib.sha256(prepend_network_byte).digest()).digest()[:4]
-    address_bytes = prepend_network_byte + checksum
-    value = int.from_bytes(address_bytes, 'big')
-    output = []
-    while value > 0:
-        value, remainder = divmod(value, 58)
-        output.append(ALPHABET[remainder])
-    for byte in address_bytes:
-        if byte == 0: output.append(ALPHABET[0])
-        else: break
-    return ''.join(output[::-1])
-
-def private_key_to_wif(private_key, compressed=True):
-    extended_key = b'\x80' + binascii.unhexlify(private_key)
-    if compressed:
-        extended_key += b'\x01'
-    checksum = hashlib.sha256(hashlib.sha256(extended_key).digest()).digest()[:4]
-    final_key = extended_key + checksum
-    value = int.from_bytes(final_key, 'big')
-    output = []
-    while value > 0:
-        value, remainder = divmod(value, 58)
-        output.append(ALPHABET[remainder])
-    for byte in final_key:
-        if byte == 0: output.append(ALPHABET[0])
-        else: break
-    return ''.join(output[::-1])
-
-def main(database, args, counter):
-    local_counter = 0
+# الواجهة البسيطة (HTML) اللي غادي تبان فـ المتصفح
+PAGE = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plutus Live Search</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; padding: 32px 20px; background: #111713; color: #e4eee7; }
+    main { width: min(900px, 100%); margin: 2vh auto 0; }
+    .eyebrow { color: #83d6a2; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; }
+    h1 { margin: 12px 0 8px; font: 600 34px/1.15 ui-sans-serif, system-ui, sans-serif; }
+    p { color: #aab8af; line-height: 1.6; }
+    button { margin: 18px 0 14px; padding: 11px 18px; border: 0; border-radius: 5px; background: #a7edbe; color: #102016; font: 700 14px ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+    button.stop-btn { background: #ff7b7b; color: #2a0000; margin-left: 10px; }
+    button:disabled { cursor: wait; opacity: .55; }
+    pre { min-height: 400px; max-height: 70vh; overflow: auto; margin: 0; padding: 18px; border: 1px solid #34443a; border-radius: 5px; background: #090d0a; color: #b8e9c6; white-space: pre-wrap; overflow-wrap: anywhere; }
+    #status { min-height: 24px; color: #83d6a2; font-size: 13px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Plutus · Live Search</div>
+    <h1>Default Search</h1>
+    <p>This page runs the actual Plutus search. Output is shown in real-time.</p>
     
-    # Pick a random starting number
-    private_key_int = int.from_bytes(os.urandom(32), 'big')
+    <div>
+        <button id="start" type="button">Start Search</button>
+        <button id="stop" type="button" class="stop-btn" disabled>Stop Search</button>
+    </div>
     
-    # Calculate the initial Public Key
-    current_key = CCPrivateKey(private_key_int.to_bytes(32, 'big'))
-    current_pub_key = current_key.public_key
+    <div id="status" role="status" aria-live="polite">Ready.</div>
+    <pre id="output">Waiting to start...</pre>
+  </main>
+  <script>
+    const startBtn = document.getElementById('start');
+    const stopBtn = document.getElementById('stop');
+    const status = document.getElementById('status');
+    const output = document.getElementById('output');
+    let eventSource = null;
 
-    while True:
-        # Get compressed bytes for hashing
-        public_key_bytes = current_pub_key.format(compressed=True)
-        
-        # Generate Address
-        address = public_key_to_address(public_key_bytes)
+    startBtn.addEventListener('click', () => {
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      status.textContent = 'Running search...';
+      output.textContent = ''; 
+      
+      eventSource = new EventSource('/api/stream-search');
 
-        if args['verbose']:
-            print(address)
-        else:
-            local_counter += 1
-            if local_counter >= 1000:
-                with counter.get_lock():
-                    counter.value += local_counter
-                local_counter = 0
-        
-        # Check Bloom Filter
-        if address in database:
-            # Convert our int tracker back to hex for the log/check
-            private_key_hex = hex(private_key_int)[2:].zfill(64).upper()
-            
-            found = False
-            for filename in os.listdir(DATABASE):
-                with open(DATABASE + filename) as file:
-                    if address in file.read():
-                        found = True
-                        with open('plutus.txt', 'a') as plutus:
-                            plutus.write('hex private key: ' + private_key_hex + '\n' +
-                                         'WIF private key: ' + str(private_key_to_wif(private_key_hex, compressed=True)) + '\n' +
-                                         'public key: ' + public_key_bytes.hex().upper() + '\n' +
-                                         'address: ' + str(address) + '\n\n')
-                        break
-            if found:
-                print(f"FOUND: {address}")
+      eventSource.onmessage = function(event) {
+        output.textContent += event.data + "\\n";
+        output.scrollTop = output.scrollHeight; 
+      };
 
-        # SHORTCUT: Point Addition
-        # Instead of generating a new key from scratch, we add G to the current point Pub(k+1) = Pub(k) + G
-        current_pub_key = CCPublicKey.combine_keys([current_pub_key, GENERATOR_PUBLIC_KEY])
-        
-        # Keep our integer tracker in sync so we know the private key if we find a match
-        private_key_int += 1
+      eventSource.onerror = function() {
+        eventSource.close();
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        status.textContent = 'Search stopped or connection lost.';
+      };
+    });
 
-def timer():
-    start = time.time()
-    private_key = generate_private_key()
-    public_key_bytes = private_key_to_public_key(private_key)
-    public_key_to_address(public_key_bytes)
-    end = time.time()
-    duration = end - start
-    print(f"Time to generate one address: {duration:.6f} seconds")
-    print(f"Estimated speed per core: {1/duration:.2f} keys/second")
-    sys.exit(0)
+    stopBtn.addEventListener('click', () => {
+      if (eventSource) { eventSource.close(); }
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      status.textContent = 'Search manually stopped.';
+      fetch('/api/stop-search', { method: 'POST' });
+    });
+  </script>
+</body>
+</html>"""
 
-def test():
-    # Hardcoded values for testing (Private Key: 1)
-    hex_private_key = "0000000000000000000000000000000000000000000000000000000000000001"
-    expected_wif = "KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn"
-    expected_public_key_hex = "0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798"
-    expected_address = "1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH"
+current_process = None
 
-    print(f"Testing with Private Key: {hex_private_key}")
+@app.get("/", response_class=HTMLResponse)
+def index() -> str:
+    return PAGE
 
-    # Test WIF Generation
-    generated_wif = private_key_to_wif(hex_private_key, compressed=True)
-    print(f"Generated WIF: {generated_wif}")
-    if generated_wif == expected_wif:
-        print("WIF Check: PASS")
-    else:
-        print(f"WIF Check: FAIL (Expected {expected_wif})")
-
-    # Test Public Key Generation
-    public_key_bytes = private_key_to_public_key(hex_private_key)
-    generated_public_key_hex = public_key_bytes.hex().upper()
-    print(f"Generated Public Key: {generated_public_key_hex}")
-    if generated_public_key_hex == expected_public_key_hex:
-        print("Public Key Check: PASS")
-    else:
-        print(f"Public Key Check: FAIL (Expected {expected_public_key_hex})")
-
-    # Test Address Generation
-    generated_address = public_key_to_address(public_key_bytes)
-    print(f"Generated Address: {generated_address}")
-    if generated_address == expected_address:
-        print("Address Check: PASS")
-    else:
-        print(f"Address Check: FAIL (Expected {expected_address})")
+@app.get("/api/stream-search")
+async def stream_search():
+    global current_process
     
-    sys.exit(0)
+    if current_process and current_process.poll() is None:
+        current_process.terminate()
 
-if __name__ == '__main__':
-    # Default to (CPU count - 1) to prevent system freezing, but minimum 1
-    default_cpu_count = multiprocessing.cpu_count()
-    if default_cpu_count > 1:
-        default_cpu_count -= 1
-
-    parser = argparse.ArgumentParser(
-        description='Plutus Bitcoin Brute Forcer',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog='''
-Examples:
-  python3 plutus.py                   # Run with default settings
-  python3 plutus.py -v 1              # Run with verbose output
-  python3 plutus.py --cpu-count 4     # Run with 4 CPU cores
-  python3 plutus.py time              # Run speed test
-  python3 plutus.py test              # Run brute-force logic test
-        '''
+    current_process = subprocess.Popen(
+        [sys.executable, "-u", str(PLUTUS_SCRIPT)],
+        cwd=PLUTUS_DIR,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
     )
-    parser.add_argument('action', nargs='?', default='run', choices=['run', 'time', 'help', 'test'], help='Action to perform')
-    parser.add_argument('--verbose', '-v', type=int, choices=[0, 1], default=0, help='Verbose output (0 or 1)')
-    parser.add_argument('--cpu-count', '-c', type=int, default=default_cpu_count, help='Number of CPU cores')
 
-    args = parser.parse_args()
+    async def event_generator():
+        for line in iter(current_process.stdout.readline, ''):
+            if line:
+                yield f"data: {line.strip()}\n\n"
+            await asyncio.sleep(0.01)
+            
+        current_process.stdout.close()
+        current_process.wait()
 
-    if args.action == 'help':
-        parser.print_help()
-        sys.exit(0)
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-    if args.action == 'time':
-        timer()
-
-    if args.action == 'test':
-        test()
-
-    if not (0 < args.cpu_count <= multiprocessing.cpu_count()):
-        print(f'Error: cpu_count must be between 1 and {multiprocessing.cpu_count()}')
-        sys.exit(-1)
-    
-    print('reading database files...')
-    database = BloomFilter(256)
-    count = 0
-    
-    files = [f for f in os.listdir(DATABASE) if os.path.isfile(os.path.join(DATABASE, f))]
-    total_bytes = sum(os.path.getsize(os.path.join(DATABASE, f)) for f in files)
-    bytes_read = 0
-
-    for filename in files:
-        file_path = os.path.join(DATABASE, filename)
-        with open(file_path) as file:
-            for address in file:
-                address = address.strip()
-                if address.startswith('1'):
-                    database.add(address)
-                    count += 1
-        
-        bytes_read += os.path.getsize(file_path)
-        sys.stdout.write(f"\rProgress: {bytes_read / total_bytes * 100:.2f}%")
-        sys.stdout.flush()
-
-    print('\nDONE')
-    print('database size: ' + str(count))
-    print('processes spawned: ' + str(args.cpu_count))
-    
-    args_dict = vars(args)
-    counter = Value('i', 0)
-    processes = []
-    
-    for cpu in range(args.cpu_count):
-        p = multiprocessing.Process(target = main, args = (database, args_dict, counter))
-        p.start()
-        processes.append(p)
-        
-    if not args.verbose:
-        try:
-            while True:
-                time.sleep(1)
-                with counter.get_lock():
-                    rate = counter.value
-                    counter.value = 0
-                sys.stdout.write(f"\rSpeed: {rate} keys/sec    ")
-                sys.stdout.flush()
-        except KeyboardInterrupt:
-            print("\nShutting down...")
-            for p in processes:
-                p.terminate()
+@app.post("/api/stop-search")
+def stop_search():
+    global current_process
+    if current_process and current_process.poll() is None:
+        current_process.terminate() 
+        return {"status": "stopped"}
+    return {"status": "no process running"}
