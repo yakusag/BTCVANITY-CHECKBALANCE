@@ -1,119 +1,116 @@
-import { useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import {
-  deriveBitcoinAddress,
-  parsePrivateKeyHex,
-} from '@/lib/bitcoin';
-
-type SelfTestResult = {
-  passed: boolean;
-  addressPassed: boolean;
-  address: string;
-  expectedAddress: string;
-  wifPassed: boolean;
-  error?: string;
-};
-
-const EXPECTED_ADDRESS = '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH';
-const EXPECTED_WIF = 'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn';
+import { useState, useRef } from 'react';
+import { ShieldCheck, Square } from 'lucide-react';
 
 export default function SelfTestPage() {
-  const [result, setResult] = useState<SelfTestResult | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [output, setOutput] = useState<string>('Ready. Click "Start Search" to begin.');
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  function runSelfTest() {
-    try {
-      const testVector = deriveBitcoinAddress(
-        parsePrivateKeyHex('1'),
-        'legacy',
-      );
-      const addressPassed = testVector.address === EXPECTED_ADDRESS;
-      const wifPassed = testVector.privateKeyWif === EXPECTED_WIF;
+  // ⚠️ هنا خاصك تحط الرابط ديال الباك اند ديالك (FastAPI)
+  // إلا كنتي كتجرب فـ PC ديالك، خليه http://127.0.0.1:7860
+  // إلا كنتي كتستعمل Termux بـ Cloudflare، حط الرابط ديال cloudflared هنا
+  const BACKEND_URL = 'http://127.0.0.1:7860'; 
 
-      setResult({
-        passed: addressPassed && wifPassed,
-        addressPassed,
-        address: testVector.address,
-        expectedAddress: EXPECTED_ADDRESS,
-        wifPassed,
-      });
-    } catch (error) {
-      setResult({
-        passed: false,
-        addressPassed: false,
-        address: 'Unavailable',
-        expectedAddress: EXPECTED_ADDRESS,
-        wifPassed: false,
-        error: error instanceof Error ? error.message : 'Unexpected error.',
-      });
+  const startSearch = () => {
+    setIsSearching(true);
+    setOutput('Starting Plutus Default Search...\n===============================\n');
+    
+    // فتح اتصال مباشر مع FastAPI باش ناخدو اللوغات (Streaming)
+    eventSourceRef.current = new EventSource(`${BACKEND_URL}/api/stream-search`);
+
+    eventSourceRef.current.onmessage = (event) => {
+      // كل سطر كيوصل من Plutus، كتزاد فـ الشاشة
+      setOutput((prev) => prev + event.data + '\n');
+    };
+
+    eventSourceRef.current.onerror = () => {
+      eventSourceRef.current?.close();
+      setIsSearching(false);
+      setOutput((prev) => prev + '\n[Search stopped or connection lost]');
+    };
+  };
+
+  const stopSearch = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      // كنصيفطو طلب للباك اند باش يقتل العملية ديال Plutus
+      fetch(`${BACKEND_URL}/api/stop-search`, { method: 'POST' }).catch(() => {});
     }
-  }
+    setIsSearching(false);
+    setOutput((prev) => prev + '\n[Search manually stopped by user]');
+  };
 
   return (
     <main className="page-wrap">
       <section className="intro">
-        <div className="eyebrow">Local diagnostics</div>
-        <h1>Self-test</h1>
+        <div className="eyebrow">Plutus Engine</div>
+        <h1>Default Search</h1>
         <p className="intro-copy">
-          Check the address and WIF conversion against a known test vector.
-          This runs locally in your browser and does not search for keys.
+          This page triggers the actual Plutus search on the backend server.
         </p>
       </section>
 
-      <section className="self-test-page" aria-label="Bitcoin conversion self-test">
+      <section className="self-test-page" aria-label="Plutus Search">
         <div className="panel self-test-panel">
           <div className="section-kicker">
             <span className="step-number">01</span>
-            Verify address conversion
+            Plutus Live Output
           </div>
           <p className="subhead">
-            The test compares the generated address and WIF with expected values.
+            Click start to run the search. Results will appear below in real-time.
           </p>
-          <button
-            className="small-button"
-            type="button"
-            onClick={runSelfTest}
-            data-testid="button-run-self-test"
-          >
-            <ShieldCheck aria-hidden="true" /> Run self-test
-          </button>
-          {result && (
-            <div
-              className={`self-test-details ${result.passed ? 'is-passed' : 'is-failed'}`}
-              data-testid="panel-self-test-result"
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <button
+              className="small-button"
+              type="button"
+              onClick={startSearch}
+              disabled={isSearching}
+              data-testid="button-run-self-test"
             >
-              <div className="self-test-summary" role="status" data-testid="status-self-test">
-                <span className="self-test-badge">{result.passed ? 'PASS' : 'FAIL'}</span>
-                <span>{result.passed ? 'All checks match the known test vector.' : 'One or more checks need attention.'}</span>
-              </div>
-              {result.error ? (
-                <p className="self-test-error">{result.error}</p>
-              ) : (
-                <>
-                  <div className="self-test-check">
-                    <div className="self-test-check-heading">
-                      <strong>Bitcoin address</strong>
-                      <span className="self-test-check-status">{result.addressPassed ? 'PASS' : 'FAIL'}</span>
-                    </div>
-                    <dl className="self-test-values">
-                      <div><dt>Actual</dt><dd>{result.address}</dd></div>
-                      <div><dt>Expected</dt><dd>{result.expectedAddress}</dd></div>
-                    </dl>
-                  </div>
-                  <div className="self-test-check">
-                    <div className="self-test-check-heading">
-                      <strong>WIF conversion</strong>
-                      <span className="self-test-check-status">{result.wifPassed ? 'PASS' : 'FAIL'}</span>
-                    </div>
-                    <p className="self-test-wif-note">
-                      {result.wifPassed ? 'Generated value matches the expected test vector.' : 'Generated value does not match the expected test vector.'}
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+              <ShieldCheck aria-hidden="true" /> Start Search
+            </button>
+
+            {isSearching && (
+              <button
+                type="button"
+                onClick={stopSearch}
+                style={{
+                  padding: '10px 15px',
+                  backgroundColor: '#ff4d4f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <Square size={16} /> Stop Search
+              </button>
+            )}
+          </div>
+
+          {/* شاشة عرض النتيجة (Terminal) */}
+          <pre
+            style={{
+              backgroundColor: '#000',
+              color: '#00ff00',
+              padding: '15px',
+              borderRadius: '8px',
+              height: '400px',
+              overflowY: 'auto',
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              border: '1px solid #333'
+            }}
+          >
+            {output}
+          </pre>
         </div>
       </section>
     </main>
   );
-}
+                  }
