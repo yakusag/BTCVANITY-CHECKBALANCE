@@ -9,7 +9,7 @@ export default function SelfTestPage() {
   // ⚠️ هنا خاصك تحط الرابط ديال الباك اند ديالك (FastAPI)
   // إلا كنتي كتجرب فـ PC ديالك، خليه http://127.0.0.1:7860
   // إلا كنتي كتستعمل Termux بـ Cloudflare، حط الرابط ديال cloudflared هنا
-  const BACKEND_URL = 'http://127.0.0.1:7860'; 
+  const BACKEND_URL = 'https://02158d46416ba1.lhr.life';
 
   const startSearch = () => {
     setIsSearching(true);
