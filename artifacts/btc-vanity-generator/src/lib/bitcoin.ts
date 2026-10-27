@@ -5,7 +5,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 export type AddressFormat = "legacy" | "segwit";
 
 export const PRIVATE_KEY_LIMIT =
-  0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
+  0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd03641410n;
 
 const BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
