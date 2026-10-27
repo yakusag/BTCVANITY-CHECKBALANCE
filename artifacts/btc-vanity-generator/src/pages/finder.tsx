@@ -94,4 +94,4 @@ export default function FinderPage() {
       )}
     </div>
   );
-  }
+                                                  }
