@@ -15,6 +15,7 @@ import BitcoinPuzzlePage from '@/pages/bitcoin-puzzle';
 import BitcoinPuzzleAddressLookupPage from '@/pages/bitcoin-puzzle-address-lookup';
 import BitcoinBalancePage from '@/pages/bitcoin-balance';
 import BitcoinRangeLookupPage from '@/pages/bitcoin-range-lookup';
+import FinderPage from '@/pages/finder';
 import SelfTestPage from '@/pages/self-test';
 import { queueBalanceCheck } from '@/lib/balance-check-transfer';
 import { rememberGeneratedAddressRanges } from '@/lib/range-lookup-index';
@@ -148,7 +149,13 @@ function SiteHeader({
   activePage,
   children,
 }: {
-  activePage: 'generator' | 'puzzle' | 'balance' | 'range-lookup' | 'self-test';
+  activePage:
+    | 'generator'
+    | 'puzzle'
+    | 'balance'
+    | 'range-lookup'
+    | 'finder'
+    | 'self-test';
   children: ReactNode;
 }) {
   return (
@@ -194,6 +201,14 @@ function SiteHeader({
           data-testid="link-range-lookup"
         >
           Range Lookup
+        </Link>
+        <Link
+          href="/finder"
+          className={`site-nav-link ${activePage === 'finder' ? 'active' : ''}`}
+          aria-current={activePage === 'finder' ? 'page' : undefined}
+          data-testid="link-hd-finder"
+        >
+          HD Finder
         </Link>
         <Link
           href="/self-test"
@@ -1077,6 +1092,7 @@ function Router() {
   const isPuzzleAddressLookup = location === '/puzzle-address-lookup';
   const isBitcoinBalance = location === '/balance-check';
   const isBitcoinRangeLookup = location === '/range-lookup';
+  const isFinder = location === '/finder';
   const isSelfTest = location === '/self-test';
 
   return (
@@ -1108,13 +1124,25 @@ function Router() {
         </SiteHeader>
         <BitcoinRangeLookupPage active={isBitcoinRangeLookup} />
       </div>
+      <div hidden={!isFinder} className="app-shell">
+        <SiteHeader activePage="finder">
+          <span>HD ADDRESS FINDER</span>
+        </SiteHeader>
+        <FinderPage />
+      </div>
       <div hidden={!isSelfTest} className="app-shell">
         <SiteHeader activePage="self-test">
           <span>LOCAL DIAGNOSTICS</span>
         </SiteHeader>
         <SelfTestPage />
       </div>
-      {!isHome && !isBitcoinPuzzle && !isPuzzleAddressLookup && !isBitcoinBalance && !isBitcoinRangeLookup && !isSelfTest && (
+      {!isHome &&
+        !isBitcoinPuzzle &&
+        !isPuzzleAddressLookup &&
+        !isBitcoinBalance &&
+        !isBitcoinRangeLookup &&
+        !isFinder &&
+        !isSelfTest && (
         <Switch>
           <Route component={NotFound} />
         </Switch>
