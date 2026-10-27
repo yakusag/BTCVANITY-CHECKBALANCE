@@ -1,9 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import {
-  searchHDAddresses,
-  type HdAddressResult,
-  type AddressFormat,
-} from '@/lib/hd-address-finder';
+import { searchHDAddresses, type AddressFormat } from '@/lib/bitcoin';
 
 import './finder.css';
 
@@ -15,20 +11,14 @@ export default function FinderPage() {
   const [format, setFormat] = useState<AddressFormat>('legacy');
   const [status, setStatus] = useState('Ready');
   const [progress, setProgress] = useState<{ index: number; speed: number } | null>(null);
-  const [match, setMatch] = useState<HdAddressResult | null>(null);
+  const [match, setMatch] = useState<{ index: number; address: string; privateKeyWif?: string; privateKeyHex?: string } | null>(null);
   const [error, setError] = useState('');
   const [searching, setSearching] = useState(false);
-  const abortController = useRef<AbortController | null>(null);
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (searching) {
-      abortController.current?.abort();
-      return;
-    }
+    if (searching) return;
 
-    const controller = new AbortController();
-    abortController.current = controller;
     setSearching(true);
     setStatus('Searching...');
     setError('');
@@ -36,26 +26,23 @@ export default function FinderPage() {
     setProgress(null);
 
     try {
-      const result = await searchHDAddresses({
-        masterKey: xpub,
-        startIndex: Number(startIndex),
-        endIndex: Number(endIndex),
+      const found = await searchHDAddresses(
+        xpub,
+        Number(startIndex),
+        Number(endIndex),
         targetAddress,
         format,
-        signal: controller.signal,
-        onProgress: (index, _addr, speed) => setProgress({ index, speed }),
-      });
-      setMatch(result);
-      setStatus(result ? `Match found at index ${result.index}` : 'Search complete — no match found');
-    } catch (searchError) {
-      if (controller.signal.aborted) {
-        setStatus('Search stopped');
-      } else {
-        setStatus('Search could not start');
-        setError(searchError instanceof Error ? searchError.message : 'An unexpected error occurred.');
+        (index, _addr, speed) => setProgress({ index, speed }),
+        (result) => setMatch(result)
+      );
+      
+      if (!found) {
+        setStatus('Search complete — no match found');
       }
+    } catch (searchError) {
+      setStatus('Search could not start');
+      setError(searchError instanceof Error ? searchError.message : 'An unexpected error occurred.');
     } finally {
-      abortController.current = null;
       setSearching(false);
     }
   }
@@ -138,12 +125,8 @@ export default function FinderPage() {
             </select>
           </label>
 
-          <p className="finder-note">
-            Searches the path <code>m/0/0/index</code>. If you use an xprv (private key), the app will display the private key (WIF) if it finds a match.
-          </p>
-
-          <button className="primary-button" type="submit">
-            {searching ? 'Stop search' : 'Find address index'}
+          <button className="primary-button" type="submit" disabled={searching}>
+            {searching ? 'Searching...' : 'Find address index'}
           </button>
         </form>
 
@@ -165,7 +148,7 @@ export default function FinderPage() {
             
             {match.privateKeyWif && (
               <div style={{ marginTop: '10px', padding: '10px', background: '#064e3b', border: '1px solid #22c55e', borderRadius: '5px' }}>
-                <p style={{ margin: 0, color: '#4ade80' }}><strong>✅ Private Key (WIF):</strong></p>
+                <p style={{ margin: 0, color: '#4ade80' }}><strong>Private Key (WIF):</strong></p>
                 <code style={{ wordBreak: 'break-all', color: 'white' }}>{match.privateKeyWif}</code>
                 
                 <p style={{ margin: '10px 0 0 0', color: '#4ade80' }}><strong>Private Key (HEX):</strong></p>
@@ -177,4 +160,4 @@ export default function FinderPage() {
       </section>
     </main>
   );
-        }
+}
