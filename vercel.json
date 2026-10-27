@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/btc-vanity-generator run build",
+  "buildCommand": "PORT=21869 BASE_PATH=/ pnpm --filter @workspace/btc-vanity-generator run build",
   "outputDirectory": "artifacts/btc-vanity-generator/dist/public",
   "rewrites": [
     {
