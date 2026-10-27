@@ -1,97 +1,180 @@
-import { useState } from "react";
-import { searchHDAddresses } from "@/lib/bitcoin";
+import { useRef, useState, type FormEvent } from 'react';
+import {
+  searchHDAddresses,
+  type HdAddressResult,
+  type AddressFormat,
+} from '@/lib/hd-address-finder';
+
+import './finder.css';
 
 export default function FinderPage() {
-  const [xpub, setXpub] = useState("");
-  const [startIndex, setStartIndex] = useState(0);
-  const [endIndex, setEndIndex] = useState(1000);
-  const [target, setTarget] = useState("1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH"); // مثال
-  const [status, setStatus] = useState("Ready");
-  const [speed, setSpeed] = useState(0);
-  const [found, setFound] = useState<any>(null);
+  const [xpub, setXpub] = useState('');
+  const [startIndex, setStartIndex] = useState('0');
+  const [endIndex, setEndIndex] = useState('1000');
+  const [targetAddress, setTargetAddress] = useState('');
+  const [format, setFormat] = useState<AddressFormat>('legacy');
+  const [status, setStatus] = useState('Ready');
+  const [progress, setProgress] = useState<{ index: number; speed: number } | null>(null);
+  const [match, setMatch] = useState<HdAddressResult | null>(null);
+  const [error, setError] = useState('');
+  const [searching, setSearching] = useState(false);
+  const abortController = useRef<AbortController | null>(null);
 
-  async function handleSearch() {
-    setStatus("Searching...");
-    setFound(null);
-    setSpeed(0);
+  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (searching) {
+      abortController.current?.abort();
+      return;
+    }
+
+    const controller = new AbortController();
+    abortController.current = controller;
+    setSearching(true);
+    setStatus('Searching...');
+    setError('');
+    setMatch(null);
+    setProgress(null);
 
     try {
-      await searchHDAddresses(
-        xpub,
-        startIndex,
-        endIndex,
-        target,
-        "legacy",
-        (index, currentAddress, currentSpeed) => {
-          setStatus(`Searching Index: ${index} (${currentAddress})`);
-          setSpeed(currentSpeed);
-        },
-        (result) => {
-          setFound(result);
-        }
-      );
-      setStatus((prev) => prev.includes("Searching") ? "Finished (Not Found)" : prev);
-    } catch (e: any) {
-      setStatus(`Error: ${e.message}`);
+      const result = await searchHDAddresses({
+        masterKey: xpub,
+        startIndex: Number(startIndex),
+        endIndex: Number(endIndex),
+        targetAddress,
+        format,
+        signal: controller.signal,
+        onProgress: (index, _addr, speed) => setProgress({ index, speed }),
+      });
+      setMatch(result);
+      setStatus(result ? `Match found at index ${result.index}` : 'Search complete — no match found');
+    } catch (searchError) {
+      if (controller.signal.aborted) {
+        setStatus('Search stopped');
+      } else {
+        setStatus('Search could not start');
+        setError(searchError instanceof Error ? searchError.message : 'An unexpected error occurred.');
+      }
+    } finally {
+      abortController.current = null;
+      setSearching(false);
     }
   }
 
   return (
-    <div style={{ padding: "20px", color: "white" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "20px" }}>BIP32 HD Finder</h1>
-      
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxWidth: "500px" }}>
-        <input 
-          type="text" 
-          value={xpub} 
-          onChange={(e) => setXpub(e.target.value)} 
-          placeholder="xpub... (or xprv)" 
-          style={{ padding: "10px", background: "#1a1a1a", border: "1px solid #333", borderRadius: "5px", color: "white" }}
-        />
-        <div style={{ display: "flex", gap: "10px" }}>
-          <input 
-            type="number" 
-            value={startIndex} 
-            onChange={(e) => setStartIndex(Number(e.target.value))} 
-            placeholder="Start Index" 
-            style={{ padding: "10px", background: "#1a1a1a", border: "1px solid #333", borderRadius: "5px", color: "white", width: "50%" }}
-          />
-          <input 
-            type="number" 
-            value={endIndex} 
-            onChange={(e) => setEndIndex(Number(e.target.value))} 
-            placeholder="End Index" 
-            style={{ padding: "10px", background: "#1a1a1a", border: "1px solid #333", borderRadius: "5px", color: "white", width: "50%" }}
-          />
-        </div>
-        <input 
-          type="text" 
-          value={target} 
-          onChange={(e) => setTarget(e.target.value)} 
-          placeholder="Target Address" 
-          style={{ padding: "10px", background: "#1a1a1a", border: "1px solid #333", borderRadius: "5px", color: "white" }}
-        />
-        <button 
-          onClick={handleSearch}
-          style={{ padding: "10px", background: "#22c55e", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}
-        >
-          Start HD Search
-        </button>
-      </div>
+    <main className="page-wrap finder-page">
+      <section className="intro">
+        <div className="eyebrow">BIP32 ADDRESS INDEX</div>
+        <h1>Find an address in your xpub/xprv</h1>
+        <p className="intro-copy">
+          Check a limited range of addresses derived from a master key. Your key stays in this browser.
+        </p>
+      </section>
 
-      <div style={{ marginTop: "20px" }}>
-        <p>Status: <span style={{ color: "#eab308" }}>{status}</span></p>
-        <p>Speed: <span style={{ color: "#22c55e" }}>{speed.toLocaleString()} keys/sec</span></p>
-      </div>
+      <section className="panel finder-panel" aria-label="HD address finder">
+        <form className="finder-form" onSubmit={handleSearch}>
+          <label className="finder-field">
+            <span>Extended Public/Private Key (xpub/xprv)</span>
+            <input
+              autoComplete="off"
+              spellCheck={false}
+              value={xpub}
+              onChange={(event) => setXpub(event.target.value)}
+              placeholder="xpub... or xprv..."
+              disabled={searching}
+              required
+            />
+          </label>
 
-      {found && (
-        <div style={{ marginTop: "20px", background: "#064e3b", border: "1px solid #22c55e", padding: "15px", borderRadius: "5px" }}>
-          <h2 style={{ color: "#4ade80", marginBottom: "10px" }}>✅ FOUND at Index {found.index}!</h2>
-          <p><strong>Address:</strong> {found.address}</p>
-          {found.privateKeyHex && <p><strong>Private Key (HEX):</strong> {found.privateKeyHex}</p>}
-          {found.privateKeyWif && <p><strong>Private Key (WIF):</strong> {found.privateKeyWif}</p>}
+          <div className="finder-index-row">
+            <label className="finder-field">
+              <span>Start index</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={startIndex}
+                onChange={(event) => setStartIndex(event.target.value)}
+                disabled={searching}
+                required
+              />
+            </label>
+            <label className="finder-field">
+              <span>End index</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={endIndex}
+                onChange={(event) => setEndIndex(event.target.value)}
+                disabled={searching}
+                required
+              />
+            </label>
+          </div>
+
+          <label className="finder-field">
+            <span>Address to find</span>
+            <input
+              autoComplete="off"
+              spellCheck={false}
+              value={targetAddress}
+              onChange={(event) => setTargetAddress(event.target.value)}
+              placeholder="1... or bc1q..."
+              disabled={searching}
+              required
+            />
+          </label>
+
+          <label className="finder-field">
+            <span>Address format</span>
+            <select 
+              value={format} 
+              onChange={(e) => setFormat(e.target.value as AddressFormat)}
+              disabled={searching}
+              style={{ padding: '10px', background: '#111113', color: 'white', border: '1px solid #333', borderRadius: '5px' }}
+            >
+              <option value="legacy">Legacy (1...)</option>
+              <option value="segwit">Native SegWit (bc1q...)</option>
+            </select>
+          </label>
+
+          <p className="finder-note">
+            Searches the path <code>m/0/0/index</code>. If you use an xprv (private key), the app will display the private key (WIF) if it finds a match.
+          </p>
+
+          <button className="primary-button" type="submit">
+            {searching ? 'Stop search' : 'Find address index'}
+          </button>
+        </form>
+
+        <div className="finder-status" role="status" aria-live="polite">
+          <strong>{status}</strong>
+          {progress && searching && (
+            <span>
+              Index {progress.index.toLocaleString()} · {progress.speed.toLocaleString()} addresses/sec
+            </span>
+          )}
+          {error && <p className="finder-error">{error}</p>}
         </div>
-      )}
-    </div>
+
+        {match && (
+          <div className="finder-match">
+            <div className="section-kicker">Address found</div>
+            <p><strong>Index:</strong> {match.index.toLocaleString()}</p>
+            <p className="finder-match-address">{match.address}</p>
+            
+            {match.privateKeyWif && (
+              <div style={{ marginTop: '10px', padding: '10px', background: '#064e3b', border: '1px solid #22c55e', borderRadius: '5px' }}>
+                <p style={{ margin: 0, color: '#4ade80' }}><strong>✅ Private Key (WIF):</strong></p>
+                <code style={{ wordBreak: 'break-all', color: 'white' }}>{match.privateKeyWif}</code>
+                
+                <p style={{ margin: '10px 0 0 0', color: '#4ade80' }}><strong>Private Key (HEX):</strong></p>
+                <code style={{ wordBreak: 'break-all', color: 'white' }}>{match.privateKeyHex}</code>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </main>
   );
-                                                  }
+        }
