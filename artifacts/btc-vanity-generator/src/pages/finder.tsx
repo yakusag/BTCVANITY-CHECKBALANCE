@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { searchHDAddresses, type AddressFormat } from '@/lib/bitcoin';
 
 import './finder.css';
@@ -38,6 +38,8 @@ export default function FinderPage() {
       
       if (!found) {
         setStatus('Search complete — no match found');
+      } else {
+        setStatus('Match found!');
       }
     } catch (searchError) {
       setStatus('Search could not start');
@@ -160,4 +162,4 @@ export default function FinderPage() {
       </section>
     </main>
   );
-}
+      }
