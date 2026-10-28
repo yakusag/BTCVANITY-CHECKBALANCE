@@ -28,20 +28,13 @@ export default function FinderPage() {
     setMatch(null);
     setProgress(null);
 
-    const worker = new Worker(
-      new URL('../lib/finder.worker.ts', import.meta.url),
-      { type: 'module' }
-    );
+    const worker = new Worker(new URL('../lib/finder.worker.ts', import.meta.url), { type: 'module' });
     workerRef.current = worker;
 
     worker.onmessage = (event) => {
       const message = event.data;
       if (message.type === 'progress') {
-        setProgress({
-          index: message.index,
-          address: message.address,
-          keysPerSecond: message.keysPerSecond,
-        });
+        setProgress({ index: message.index, address: message.address, keysPerSecond: message.keysPerSecond });
       } else if (message.type === 'found') {
         setMatch(message.result);
         setStatus('Match found!');
@@ -95,27 +88,11 @@ export default function FinderPage() {
           <div className="finder-index-row">
             <label className="finder-field">
               <span>Start index</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={startIndex}
-                onChange={(event) => setStartIndex(event.target.value)}
-                disabled={searching}
-                required
-              />
+              <input type="number" min="0" step="1" value={startIndex} onChange={(e) => setStartIndex(e.target.value)} disabled={searching} required />
             </label>
             <label className="finder-field">
               <span>End index</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={endIndex}
-                onChange={(event) => setEndIndex(event.target.value)}
-                disabled={searching}
-                required
-              />
+              <input type="number" min="0" step="1" value={endIndex} onChange={(e) => setEndIndex(e.target.value)} disabled={searching} required />
             </label>
           </div>
 
@@ -157,7 +134,6 @@ export default function FinderPage() {
               <div style={{ marginTop: '10px', padding: '15px', background: '#064e3b', border: '1px solid #22c55e', borderRadius: '8px' }}>
                 <p style={{ margin: 0, color: '#4ade80', fontWeight: 'bold' }}>✅ Private Key (WIF):</p>
                 <code style={{ wordBreak: 'break-all', color: 'white', fontSize: '14px' }}>{match.privateKeyWif}</code>
-                
                 <p style={{ margin: '15px 0 0 0', color: '#4ade80', fontWeight: 'bold' }}>Private Key (HEX):</p>
                 <code style={{ wordBreak: 'break-all', color: 'white', fontSize: '14px' }}>{match.privateKeyHex}</code>
               </div>
@@ -167,4 +143,4 @@ export default function FinderPage() {
       </section>
     </main>
   );
-}
+              }
