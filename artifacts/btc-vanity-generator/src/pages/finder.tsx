@@ -7,6 +7,11 @@ export default function FinderPage() {
   const [xpub, setXpub] = useState('');
   const [startIndex, setStartIndex] = useState('0');
   const [endIndex, setEndIndex] = useState('1000');
+  
+  // الزيادة الجديدة: Range للـ Custom Range
+  const [startRange, setStartRange] = useState('0');
+  const [endRange, setEndRange] = useState('0'); // 0 يعني مامستعملش الـ Range
+
   const [targetAddress, setTargetAddress] = useState('');
   const [format, setFormat] = useState<AddressFormat>('legacy');
   const [status, setStatus] = useState('Ready');
@@ -26,15 +31,43 @@ export default function FinderPage() {
     setProgress(null);
 
     try {
-      const found = await searchHDAddresses(
-        xpub,
-        Number(startIndex),
-        Number(endIndex),
-        targetAddress,
-        format,
-        (index, _addr, speed) => setProgress({ index, speed }),
-        (result) => setMatch(result)
-      );
+      // إلا كان الـ Range = 0، كنقلبو غير على الـ Indexes العاديين
+      // إلا كان الـ Range > 0، كنقلبو على الـ Range الكامل
+      let found = false;
+      const rangeStart = Number(startRange);
+      const rangeEnd = Number(endRange);
+
+      if (rangeEnd > rangeStart) {
+        // Custom Range Search
+        for (let i = rangeStart; i <= rangeEnd; i++) {
+          if (searching === false) break; // Stop
+          const indexStart = Number(startIndex);
+          const indexEnd = Number(endIndex);
+          
+          found = await searchHDAddresses(
+            xpub,
+            indexStart,
+            indexEnd,
+            targetAddress,
+            format,
+            (index, _addr, speed) => setProgress({ index, speed }),
+            (result) => setMatch(result)
+          );
+          
+          if (found) break;
+        }
+      } else {
+        // Normal Index Search
+        found = await searchHDAddresses(
+          xpub,
+          Number(startIndex),
+          Number(endIndex),
+          targetAddress,
+          format,
+          (index, _addr, speed) => setProgress({ index, speed }),
+          (result) => setMatch(result)
+        );
+      }
       
       if (!found) {
         setStatus('Search complete — no match found');
@@ -101,6 +134,34 @@ export default function FinderPage() {
             </label>
           </div>
 
+          {/* الحقول الجديدة ديال Custom Range */}
+          <div className="finder-index-row">
+            <label className="finder-field">
+              <span>Start Range (optional)</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={startRange}
+                onChange={(event) => setStartRange(event.target.value)}
+                disabled={searching}
+                placeholder="0"
+              />
+            </label>
+            <label className="finder-field">
+              <span>End Range (optional)</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={endRange}
+                onChange={(event) => setEndRange(event.target.value)}
+                disabled={searching}
+                placeholder="0"
+              />
+            </label>
+          </div>
+
           <label className="finder-field">
             <span>Address to find</span>
             <input
@@ -162,4 +223,4 @@ export default function FinderPage() {
       </section>
     </main>
   );
-                }
+              }
