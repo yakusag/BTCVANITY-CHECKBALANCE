@@ -150,7 +150,7 @@ export default function FinderPage() {
             
             {match.privateKeyWif && (
               <div style={{ marginTop: '10px', padding: '10px', background: '#064e3b', border: '1px solid #22c55e', borderRadius: '5px' }}>
-                <p style={{ margin: 0, color: '#4ade80' }}><strong>Private Key (WIF):</strong></p>
+                <p style={{ margin: 0, color: '#4ade80' }}><strong>✅ Private Key (WIF):</strong></p>
                 <code style={{ wordBreak: 'break-all', color: 'white' }}>{match.privateKeyWif}</code>
                 
                 <p style={{ margin: '10px 0 0 0', color: '#4ade80' }}><strong>Private Key (HEX):</strong></p>
@@ -162,4 +162,4 @@ export default function FinderPage() {
       </section>
     </main>
   );
-}
+                }
