@@ -1,27 +1,23 @@
+/// <reference lib="webworker" />
+
 import { HDKey } from '@scure/bip32';
 import { ripemd160 } from '@noble/hashes/legacy.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 
-const BASE58_ALPHABET =
-  '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 function base58Encode(bytes: Uint8Array): string {
-  let value = BigInt(
-    `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`,
-  );
+  let value = BigInt(`0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`);
   let encoded = '';
-
   while (value > 0n) {
     const digit = Number(value % 58n);
     encoded = BASE58_ALPHABET[digit] + encoded;
     value /= 58n;
   }
-
   let leadingZeroes = 0;
   while (leadingZeroes < bytes.length && bytes[leadingZeroes] === 0) {
     leadingZeroes += 1;
   }
-
   return `${'1'.repeat(leadingZeroes)}${encoded}`;
 }
 
@@ -30,7 +26,6 @@ function legacyAddressFromPublicKey(publicKey: Uint8Array): string {
   const payload = new Uint8Array(21);
   payload[0] = 0;
   payload.set(publicKeyHash, 1);
-
   const checksum = sha256(sha256(payload)).slice(0, 4);
   const addressBytes = new Uint8Array(payload.length + checksum.length);
   addressBytes.set(payload);
@@ -47,7 +42,6 @@ function privateKeyToWif(privateKey: Uint8Array): string {
   payload[0] = 0x80;
   payload.set(privateKey, 1);
   payload[33] = 0x01;
-  
   const checksum = sha256(sha256(payload)).slice(0, 4);
   const wifBytes = new Uint8Array(payload.length + checksum.length);
   wifBytes.set(payload);
@@ -57,7 +51,6 @@ function privateKeyToWif(privateKey: Uint8Array): string {
 
 self.onmessage = async (event) => {
   const { xpub, startIndex, endIndex, targetAddress } = event.data;
-
   let master: HDKey;
   try {
     master = HDKey.fromExtendedKey(xpub.trim());
@@ -74,9 +67,8 @@ self.onmessage = async (event) => {
     try {
       const child = master.derive(`m/0/0/${index}`);
       if (!child.publicKey) continue;
-
       const address = legacyAddressFromPublicKey(child.publicKey);
-      
+
       if (address === normalizedTarget) {
         const result: any = { index, address };
         if (child.privateKey) {
@@ -99,9 +91,8 @@ self.onmessage = async (event) => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       }
     } catch (e) {
-      // ignore errors for individual indexes
+      // ignore
     }
   }
-
   self.postMessage({ type: 'exhausted' });
 };
