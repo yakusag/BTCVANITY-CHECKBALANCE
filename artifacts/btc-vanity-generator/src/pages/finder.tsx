@@ -1,28 +1,26 @@
-import { useState, type FormEvent } from 'react';
-import { searchHDAddresses, type AddressFormat } from '@/lib/bitcoin';
-
+import { useRef, useState, type FormEvent } from 'react';
 import './finder.css';
 
 export default function FinderPage() {
   const [xpub, setXpub] = useState('');
   const [startIndex, setStartIndex] = useState('0');
   const [endIndex, setEndIndex] = useState('1000');
-  
-  // الحقول الجديدة ديال Custom Range
-  const [startRange, setStartRange] = useState('0');
-  const [endRange, setEndRange] = useState('0'); 
-  
   const [targetAddress, setTargetAddress] = useState('');
-  const [format, setFormat] = useState<AddressFormat>('legacy');
   const [status, setStatus] = useState('Ready');
-  const [progress, setProgress] = useState<{ index: number; speed: number } | null>(null);
-  const [match, setMatch] = useState<{ index: number; address: string; privateKeyWif?: string; privateKeyHex?: string } | null>(null);
+  const [progress, setProgress] = useState<{ index: number; address: string; keysPerSecond: number } | null>(null);
+  const [match, setMatch] = useState<any>(null);
   const [error, setError] = useState('');
   const [searching, setSearching] = useState(false);
+  const workerRef = useRef<Worker | null>(null);
 
-  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (searching) return;
+    if (searching) {
+      workerRef.current?.terminate();
+      setSearching(false);
+      setStatus('Search stopped');
+      return;
+    }
 
     setSearching(true);
     setStatus('Searching...');
@@ -30,52 +28,43 @@ export default function FinderPage() {
     setMatch(null);
     setProgress(null);
 
-    try {
-      let found = false;
-      const rangeStart = Number(startRange);
-      const rangeEnd = Number(endRange);
+    const worker = new Worker(
+      new URL('../lib/finder.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    workerRef.current = worker;
 
-      // إلا كان الـ Range = 0، كنقلبو غير على الـ Indexes العاديين
-      // إلا كان الـ Range > 0، كنقلبو على الـ Range الكامل
-      if (rangeEnd > rangeStart) {
-        for (let i = rangeStart; i <= rangeEnd; i++) {
-          if (!searching) break;
-          
-          found = await searchHDAddresses(
-            xpub,
-            Number(startIndex),
-            Number(endIndex),
-            targetAddress,
-            format,
-            (index, _addr, speed) => setProgress({ index, speed }),
-            (result) => setMatch(result)
-          );
-          
-          if (found) break;
-        }
-      } else {
-        found = await searchHDAddresses(
-          xpub,
-          Number(startIndex),
-          Number(endIndex),
-          targetAddress,
-          format,
-          (index, _addr, speed) => setProgress({ index, speed }),
-          (result) => setMatch(result)
-        );
-      }
-      
-      if (!found) {
-        setStatus('Search complete — no match found');
-      } else {
+    worker.onmessage = (event) => {
+      const message = event.data;
+      if (message.type === 'progress') {
+        setProgress({
+          index: message.index,
+          address: message.address,
+          keysPerSecond: message.keysPerSecond,
+        });
+      } else if (message.type === 'found') {
+        setMatch(message.result);
         setStatus('Match found!');
+        setSearching(false);
+        worker.terminate();
+      } else if (message.type === 'exhausted') {
+        setStatus('Search complete — no match found');
+        setSearching(false);
+        worker.terminate();
+      } else if (message.type === 'error') {
+        setError(message.message);
+        setStatus('Search could not start');
+        setSearching(false);
+        worker.terminate();
       }
-    } catch (searchError) {
-      setStatus('Search could not start');
-      setError(searchError instanceof Error ? searchError.message : 'An unexpected error occurred.');
-    } finally {
-      setSearching(false);
-    }
+    };
+
+    worker.postMessage({
+      xpub,
+      startIndex: Number(startIndex),
+      endIndex: Number(endIndex),
+      targetAddress,
+    });
   }
 
   return (
@@ -130,34 +119,6 @@ export default function FinderPage() {
             </label>
           </div>
 
-          {/* الحقول الجديدة ديال Custom Range */}
-          <div className="finder-index-row">
-            <label className="finder-field">
-              <span>Start Range (optional)</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={startRange}
-                onChange={(event) => setStartRange(event.target.value)}
-                disabled={searching}
-                placeholder="0"
-              />
-            </label>
-            <label className="finder-field">
-              <span>End Range (optional)</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={endRange}
-                onChange={(event) => setEndRange(event.target.value)}
-                disabled={searching}
-                placeholder="0"
-              />
-            </label>
-          </div>
-
           <label className="finder-field">
             <span>Address to find</span>
             <input
@@ -171,20 +132,8 @@ export default function FinderPage() {
             />
           </label>
 
-          <label className="finder-field">
-            <span>Address format</span>
-            <select 
-              value={format} 
-              onChange={(e) => setFormat(e.target.value as AddressFormat)}
-              disabled={searching}
-            >
-              <option value="legacy">Legacy (1...)</option>
-              <option value="segwit">Native SegWit (bc1q...)</option>
-            </select>
-          </label>
-
-          <button className="primary-button" type="submit" disabled={searching}>
-            {searching ? 'Searching...' : 'Find address index'}
+          <button className="primary-button" type="submit">
+            {searching ? 'Stop search' : 'Find address index'}
           </button>
         </form>
 
@@ -192,7 +141,7 @@ export default function FinderPage() {
           <strong>{status}</strong>
           {progress && searching && (
             <span>
-              Index {progress.index.toLocaleString()} · {progress.speed.toLocaleString()} addresses/sec
+              Index {progress.index.toLocaleString()} · {progress.keysPerSecond.toLocaleString()} addresses/sec
             </span>
           )}
           {error && <p className="finder-error">{error}</p>}
@@ -218,4 +167,4 @@ export default function FinderPage() {
       </section>
     </main>
   );
-      }
+}
