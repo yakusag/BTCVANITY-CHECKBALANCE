@@ -142,8 +142,10 @@ worker.onmessage = (event) => {
         pendingCandidates = [];
       };
 
+      // هادي هي الحلقة اللي كتخدم بلا توقف
       while (!stopRequested) {
-        for (let count = 0; count < 500 && !stopRequested; count += 1) {
+        // زدنا العدد من 500 لـ 5000 باش نسرعو
+        for (let count = 0; count < 5000 && !stopRequested; count += 1) {
           if (options.mode === "range" && cursor > end) {
             flushCandidates();
             reportEnd(
@@ -158,17 +160,14 @@ worker.onmessage = (event) => {
             options.mode === "range"
               ? privateKeyFromRangeValue(cursor++)
               : randomPrivateKey();
-          const result =
-            options.mode === "range"
-              ? deriveBitcoinAddress(key, options.format)
-              : undefined;
-          const address =
-            result?.address ?? deriveBitcoinAddressOnly(key, options.format);
+          
+          // هنا كنحسبو غير الـ Address (باش نسرعو)، وملي نلقاو التطابق كنحسبو الـ WIF
+          const address = deriveBitcoinAddressOnly(key, options.format);
           attempts += 1;
+
+          // إلا كنا فـ Range mode وكنحتاجو الداتا ديال الـ WIF
           if (options.mode === "range") {
-            if (!result) {
-              throw new Error("Could not derive the generated private key.");
-            }
+            const result = deriveBitcoinAddress(key, options.format);
             pendingCandidates.push({
               index: (options.candidateOffset ?? 0) + attempts,
               address,
@@ -176,7 +175,8 @@ worker.onmessage = (event) => {
               rangeStartHex: start.toString(16),
               rangeEndHex: end.toString(16),
             });
-            if (pendingCandidates.length >= CANDIDATE_BATCH_SIZE) {
+            // زدنا الـ Batch باش نقللو الـ postMessage
+            if (pendingCandidates.length >= 1000) {
               flushCandidates();
             }
           }
@@ -191,11 +191,12 @@ worker.onmessage = (event) => {
             )
           ) {
             flushCandidates();
+            const result = deriveBitcoinAddress(key, options.format);
             worker.postMessage({
               type: "found",
               attempts,
               elapsedMs: Math.max(1, performance.now() - startedAt),
-              result: result ?? deriveBitcoinAddress(key, options.format),
+              result,
             });
             return;
           }
@@ -224,6 +225,7 @@ worker.onmessage = (event) => {
           lastReportAt = now;
         }
 
+        // هادي هي اللي كتخلي المتصفح يتنفس، ولكن كنعطيو وقت أقل
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
 
