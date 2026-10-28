@@ -5,7 +5,6 @@ import { isValidBitcoinAddressTarget } from '@/lib/bitcoin';
 
 const BASE58_ALPHABET =
   '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-const MAX_INDEX_SPAN = 100_000;
 
 export type HdAddressProgress = {
   index: number;
@@ -16,6 +15,8 @@ export type HdAddressProgress = {
 export type HdAddressMatch = {
   index: number;
   address: string;
+  privateKeyWif?: string;
+  privateKeyHex?: string;
 };
 
 function base58Encode(bytes: Uint8Array): string {
@@ -51,6 +52,23 @@ function legacyAddressFromPublicKey(publicKey: Uint8Array): string {
   return base58Encode(addressBytes);
 }
 
+function privateKeyToHex(privateKey: Uint8Array): string {
+  return Array.from(privateKey, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function privateKeyToWif(privateKey: Uint8Array): string {
+  const payload = new Uint8Array(34);
+  payload[0] = 0x80;
+  payload.set(privateKey, 1);
+  payload[33] = 0x01;
+  
+  const checksum = sha256(sha256(payload)).slice(0, 4);
+  const wifBytes = new Uint8Array(payload.length + checksum.length);
+  wifBytes.set(payload);
+  wifBytes.set(checksum, payload.length);
+  return base58Encode(wifBytes);
+}
+
 export async function findHdAddressByXpub({
   xpub,
   startIndex,
@@ -66,11 +84,11 @@ export async function findHdAddressByXpub({
   signal?: AbortSignal;
   onProgress?: (progress: HdAddressProgress) => void;
 }): Promise<HdAddressMatch | null> {
-  const normalizedXpub = xpub.trim();
+  const normalizedKey = xpub.trim();
   const normalizedTarget = targetAddress.trim();
 
-  if (!normalizedXpub.startsWith('xpub')) {
-    throw new Error('Enter a mainnet xpub. Extended private keys are not accepted.');
+  if (!normalizedKey.startsWith('xpub') && !normalizedKey.startsWith('xprv')) {
+    throw new Error('Enter a mainnet xpub or xprv.');
   }
   if (!Number.isInteger(startIndex) || !Number.isInteger(endIndex)) {
     throw new Error('Indexes must be whole numbers.');
@@ -78,21 +96,15 @@ export async function findHdAddressByXpub({
   if (startIndex < 0 || endIndex < startIndex) {
     throw new Error('Enter a valid index range.');
   }
-  if (endIndex - startIndex + 1 > MAX_INDEX_SPAN) {
-    throw new Error(`Search ranges are limited to ${MAX_INDEX_SPAN.toLocaleString()} indexes.`);
-  }
   if (!isValidBitcoinAddressTarget(normalizedTarget, 'legacy')) {
     throw new Error('Enter a valid mainnet Legacy address.');
   }
 
   let master: HDKey;
   try {
-    master = HDKey.fromExtendedKey(normalizedXpub);
+    master = HDKey.fromExtendedKey(normalizedKey);
   } catch {
-    throw new Error('The extended public key is invalid.');
-  }
-  if (master.privateKey) {
-    throw new Error('Use an xpub only. Extended private keys are not accepted.');
+    throw new Error('The extended key is invalid.');
   }
 
   const startedAt = performance.now();
@@ -112,7 +124,16 @@ export async function findHdAddressByXpub({
     }
 
     const address = legacyAddressFromPublicKey(child.publicKey);
-    if (address === normalizedTarget) return { index, address };
+    if (address === normalizedTarget) {
+      const result: HdAddressMatch = { index, address };
+      
+      if (child.privateKey) {
+        result.privateKeyHex = privateKeyToHex(child.privateKey);
+        result.privateKeyWif = privateKeyToWif(child.privateKey);
+      }
+      
+      return result;
+    }
 
     checked += 1;
     if (onProgress && checked % 100 === 0) {
@@ -130,4 +151,4 @@ export async function findHdAddressByXpub({
   }
 
   return null;
-}
+    }
