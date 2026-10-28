@@ -5,7 +5,10 @@ export default function FinderPage() {
   const [xpub, setXpub] = useState('');
   const [startIndex, setStartIndex] = useState('0');
   const [endIndex, setEndIndex] = useState('1000');
+  const [startRange, setStartRange] = useState('0');
+  const [endRange, setEndRange] = useState('0');
   const [targetAddress, setTargetAddress] = useState('');
+  const [format, setFormat] = useState<'legacy' | 'segwit'>('legacy');
   const [status, setStatus] = useState('Ready');
   const [progress, setProgress] = useState<{ index: number; address: string; keysPerSecond: number } | null>(null);
   const [match, setMatch] = useState<any>(null);
@@ -52,11 +55,15 @@ export default function FinderPage() {
       }
     };
 
+    // هنا كنصيفطو الـ Range و الـ Format للـ Worker
     worker.postMessage({
       xpub,
       startIndex: Number(startIndex),
       endIndex: Number(endIndex),
+      startRange: Number(startRange),
+      endRange: Number(endRange),
       targetAddress,
+      format,
     });
   }
 
@@ -96,6 +103,17 @@ export default function FinderPage() {
             </label>
           </div>
 
+          <div className="finder-index-row">
+            <label className="finder-field">
+              <span>Start Range (optional)</span>
+              <input type="number" min="0" step="1" value={startRange} onChange={(e) => setStartRange(e.target.value)} disabled={searching} placeholder="0" />
+            </label>
+            <label className="finder-field">
+              <span>End Range (optional)</span>
+              <input type="number" min="0" step="1" value={endRange} onChange={(e) => setEndRange(e.target.value)} disabled={searching} placeholder="0" />
+            </label>
+          </div>
+
           <label className="finder-field">
             <span>Address to find</span>
             <input
@@ -107,6 +125,14 @@ export default function FinderPage() {
               disabled={searching}
               required
             />
+          </label>
+
+          <label className="finder-field">
+            <span>Address format</span>
+            <select value={format} onChange={(e) => setFormat(e.target.value as 'legacy' | 'segwit')} disabled={searching}>
+              <option value="legacy">Legacy (1...)</option>
+              <option value="segwit">Native SegWit (bc1q...)</option>
+            </select>
           </label>
 
           <button className="primary-button" type="submit">
@@ -143,4 +169,4 @@ export default function FinderPage() {
       </section>
     </main>
   );
-}
+              }
