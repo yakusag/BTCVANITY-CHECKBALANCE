@@ -8,10 +8,10 @@ export default function FinderPage() {
   const [startIndex, setStartIndex] = useState('0');
   const [endIndex, setEndIndex] = useState('1000');
   
-  // الزيادة الجديدة: Range للـ Custom Range
+  // الحقول الجديدة ديال Custom Range
   const [startRange, setStartRange] = useState('0');
-  const [endRange, setEndRange] = useState('0'); // 0 يعني مامستعملش الـ Range
-
+  const [endRange, setEndRange] = useState('0'); 
+  
   const [targetAddress, setTargetAddress] = useState('');
   const [format, setFormat] = useState<AddressFormat>('legacy');
   const [status, setStatus] = useState('Ready');
@@ -31,23 +31,20 @@ export default function FinderPage() {
     setProgress(null);
 
     try {
-      // إلا كان الـ Range = 0، كنقلبو غير على الـ Indexes العاديين
-      // إلا كان الـ Range > 0، كنقلبو على الـ Range الكامل
       let found = false;
       const rangeStart = Number(startRange);
       const rangeEnd = Number(endRange);
 
+      // إلا كان الـ Range = 0، كنقلبو غير على الـ Indexes العاديين
+      // إلا كان الـ Range > 0، كنقلبو على الـ Range الكامل
       if (rangeEnd > rangeStart) {
-        // Custom Range Search
         for (let i = rangeStart; i <= rangeEnd; i++) {
-          if (searching === false) break; // Stop
-          const indexStart = Number(startIndex);
-          const indexEnd = Number(endIndex);
+          if (!searching) break;
           
           found = await searchHDAddresses(
             xpub,
-            indexStart,
-            indexEnd,
+            Number(startIndex),
+            Number(endIndex),
             targetAddress,
             format,
             (index, _addr, speed) => setProgress({ index, speed }),
@@ -57,7 +54,6 @@ export default function FinderPage() {
           if (found) break;
         }
       } else {
-        // Normal Index Search
         found = await searchHDAddresses(
           xpub,
           Number(startIndex),
@@ -181,7 +177,6 @@ export default function FinderPage() {
               value={format} 
               onChange={(e) => setFormat(e.target.value as AddressFormat)}
               disabled={searching}
-              style={{ padding: '10px', background: '#111113', color: 'white', border: '1px solid #333', borderRadius: '5px' }}
             >
               <option value="legacy">Legacy (1...)</option>
               <option value="segwit">Native SegWit (bc1q...)</option>
@@ -210,12 +205,12 @@ export default function FinderPage() {
             <p className="finder-match-address">{match.address}</p>
             
             {match.privateKeyWif && (
-              <div style={{ marginTop: '10px', padding: '10px', background: '#064e3b', border: '1px solid #22c55e', borderRadius: '5px' }}>
-                <p style={{ margin: 0, color: '#4ade80' }}><strong>✅ Private Key (WIF):</strong></p>
-                <code style={{ wordBreak: 'break-all', color: 'white' }}>{match.privateKeyWif}</code>
+              <div style={{ marginTop: '10px', padding: '15px', background: '#064e3b', border: '1px solid #22c55e', borderRadius: '8px' }}>
+                <p style={{ margin: 0, color: '#4ade80', fontWeight: 'bold' }}>✅ Private Key (WIF):</p>
+                <code style={{ wordBreak: 'break-all', color: 'white', fontSize: '14px' }}>{match.privateKeyWif}</code>
                 
-                <p style={{ margin: '10px 0 0 0', color: '#4ade80' }}><strong>Private Key (HEX):</strong></p>
-                <code style={{ wordBreak: 'break-all', color: 'white' }}>{match.privateKeyHex}</code>
+                <p style={{ margin: '15px 0 0 0', color: '#4ade80', fontWeight: 'bold' }}>Private Key (HEX):</p>
+                <code style={{ wordBreak: 'break-all', color: 'white', fontSize: '14px' }}>{match.privateKeyHex}</code>
               </div>
             )}
           </div>
@@ -223,4 +218,4 @@ export default function FinderPage() {
       </section>
     </main>
   );
-              }
+      }
