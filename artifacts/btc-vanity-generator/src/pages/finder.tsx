@@ -2,15 +2,11 @@ import { useRef, useState, type FormEvent } from 'react';
 import './finder.css';
 
 export default function FinderPage() {
-  const [xpub, setXpub] = useState('');
-  const [startIndex, setStartIndex] = useState('0');
-  const [endIndex, setEndIndex] = useState('1000');
-  const [startRange, setStartRange] = useState('0');
-  const [endRange, setEndRange] = useState('0');
+  const [startHex, setStartHex] = useState('1');
+  const [endHex, setEndHex] = useState('FFFFF');
   const [targetAddress, setTargetAddress] = useState('');
-  const [format, setFormat] = useState<'legacy' | 'segwit'>('legacy');
   const [status, setStatus] = useState('Ready');
-  const [progress, setProgress] = useState<{ index: number; address: string; keysPerSecond: number } | null>(null);
+  const [progress, setProgress] = useState<{ index: string; address: string; keysPerSecond: number } | null>(null);
   const [match, setMatch] = useState<any>(null);
   const [error, setError] = useState('');
   const [searching, setSearching] = useState(false);
@@ -55,65 +51,25 @@ export default function FinderPage() {
       }
     };
 
-    // هنا كنصيفطو الـ Range و الـ Format للـ Worker
     worker.postMessage({
-      xpub,
-      startIndex: Number(startIndex),
-      endIndex: Number(endIndex),
-      startRange: Number(startRange),
-      endRange: Number(endRange),
+      startHex,
+      endHex,
       targetAddress,
-      format,
     });
   }
 
   return (
     <main className="page-wrap finder-page">
       <section className="intro">
-        <div className="eyebrow">BIP32 ADDRESS INDEX</div>
-        <h1>Find an address in your xpub/xprv</h1>
+        <div className="eyebrow">BITCOIN ADDRESS FINDER (BRUTE FORCE)</div>
+        <h1>Find Private Key by Address</h1>
         <p className="intro-copy">
-          Check a limited range of addresses derived from a master key. Your key stays in this browser.
+          Search a specific range of private keys to find the matching address.
         </p>
       </section>
 
-      <section className="panel finder-panel" aria-label="HD address finder">
+      <section className="panel finder-panel" aria-label="Address finder">
         <form className="finder-form" onSubmit={handleSearch}>
-          <label className="finder-field">
-            <span>Extended Public/Private Key (xpub/xprv)</span>
-            <input
-              autoComplete="off"
-              spellCheck={false}
-              value={xpub}
-              onChange={(event) => setXpub(event.target.value)}
-              placeholder="xpub... or xprv..."
-              disabled={searching}
-              required
-            />
-          </label>
-
-          <div className="finder-index-row">
-            <label className="finder-field">
-              <span>Start index</span>
-              <input type="number" min="0" step="1" value={startIndex} onChange={(e) => setStartIndex(e.target.value)} disabled={searching} required />
-            </label>
-            <label className="finder-field">
-              <span>End index</span>
-              <input type="number" min="0" step="1" value={endIndex} onChange={(e) => setEndIndex(e.target.value)} disabled={searching} required />
-            </label>
-          </div>
-
-          <div className="finder-index-row">
-            <label className="finder-field">
-              <span>Start Range (optional)</span>
-              <input type="number" min="0" step="1" value={startRange} onChange={(e) => setStartRange(e.target.value)} disabled={searching} placeholder="0" />
-            </label>
-            <label className="finder-field">
-              <span>End Range (optional)</span>
-              <input type="number" min="0" step="1" value={endRange} onChange={(e) => setEndRange(e.target.value)} disabled={searching} placeholder="0" />
-            </label>
-          </div>
-
           <label className="finder-field">
             <span>Address to find</span>
             <input
@@ -127,16 +83,19 @@ export default function FinderPage() {
             />
           </label>
 
-          <label className="finder-field">
-            <span>Address format</span>
-            <select value={format} onChange={(e) => setFormat(e.target.value as 'legacy' | 'segwit')} disabled={searching}>
-              <option value="legacy">Legacy (1...)</option>
-              <option value="segwit">Native SegWit (bc1q...)</option>
-            </select>
-          </label>
+          <div className="finder-index-row">
+            <label className="finder-field">
+              <span>Start Key (Hex)</span>
+              <input type="text" value={startHex} onChange={(e) => setStartHex(e.target.value)} disabled={searching} required />
+            </label>
+            <label className="finder-field">
+              <span>End Key (Hex)</span>
+              <input type="text" value={endHex} onChange={(e) => setEndHex(e.target.value)} disabled={searching} required />
+            </label>
+          </div>
 
           <button className="primary-button" type="submit">
-            {searching ? 'Stop search' : 'Find address index'}
+            {searching ? 'Stop search' : 'Start Search'}
           </button>
         </form>
 
@@ -144,7 +103,7 @@ export default function FinderPage() {
           <strong>{status}</strong>
           {progress && searching && (
             <span>
-              Index {progress.index.toLocaleString()} · {progress.keysPerSecond.toLocaleString()} addresses/sec
+              Key: {progress.index} · {progress.keysPerSecond.toLocaleString()} keys/sec
             </span>
           )}
           {error && <p className="finder-error">{error}</p>}
@@ -152,21 +111,13 @@ export default function FinderPage() {
 
         {match && (
           <div className="finder-match">
-            <div className="section-kicker">Address found</div>
-            <p><strong>Index:</strong> {match.index.toLocaleString()}</p>
-            <p className="finder-match-address">{match.address}</p>
-            
-            {match.privateKeyWif && (
-              <div style={{ marginTop: '10px', padding: '15px', background: '#064e3b', border: '1px solid #22c55e', borderRadius: '8px' }}>
-                <p style={{ margin: 0, color: '#4ade80', fontWeight: 'bold' }}>✅ Private Key (WIF):</p>
-                <code style={{ wordBreak: 'break-all', color: 'white', fontSize: '14px' }}>{match.privateKeyWif}</code>
-                <p style={{ margin: '15px 0 0 0', color: '#4ade80', fontWeight: 'bold' }}>Private Key (HEX):</p>
-                <code style={{ wordBreak: 'break-all', color: 'white', fontSize: '14px' }}>{match.privateKeyHex}</code>
-              </div>
-            )}
+            <div className="section-kicker">✅ Found!</div>
+            <p><strong>Address:</strong> {match.address}</p>
+            <p><strong>Private Key (Hex):</strong> {match.privateKeyHex}</p>
+            <p><strong>Private Key (WIF):</strong> {match.privateKeyWif}</p>
           </div>
         )}
       </section>
     </main>
   );
-              }
+}
