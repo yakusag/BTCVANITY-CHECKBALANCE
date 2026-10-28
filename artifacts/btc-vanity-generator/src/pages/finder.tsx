@@ -66,23 +66,22 @@ export default function FinderPage() {
     <main className="page-wrap finder-page">
       <section className="intro">
         <div className="eyebrow">BIP32 ADDRESS INDEX</div>
-        <h1>Find an address in your xpub</h1>
+        <h1>Find an address in your xpub/xprv</h1>
         <p className="intro-copy">
-          Check a limited range of addresses derived from a public key. Your xpub
-          stays in this browser; private extended keys are not accepted.
+          Check a limited range of addresses derived from a master key. Your key stays in this browser.
         </p>
       </section>
 
       <section className="panel finder-panel" aria-label="HD address finder">
         <form className="finder-form" onSubmit={handleSearch}>
           <label className="finder-field">
-            <span>Extended public key</span>
+            <span>Extended Public/Private Key (xpub/xprv)</span>
             <input
               autoComplete="off"
               spellCheck={false}
               value={xpub}
               onChange={(event) => setXpub(event.target.value)}
-              placeholder="xpub..."
+              placeholder="xpub... or xprv..."
               disabled={searching}
               required
             />
@@ -129,9 +128,7 @@ export default function FinderPage() {
           </label>
 
           <p className="finder-note">
-            Searches the path <code>m/0/0/index</code>, up to 100,000 indexes.
-            Use an xpub you control; this tool only checks public addresses and
-            never returns private keys.
+            Searches the path <code>m/0/0/index</code>. If you use an xprv (private key), the app will display the private key (WIF) if it finds a match.
           </p>
 
           <button className="primary-button" type="submit">
@@ -157,9 +154,19 @@ export default function FinderPage() {
               <strong>Index:</strong> {match.index.toLocaleString()}
             </p>
             <p className="finder-match-address">{match.address}</p>
+            
+            {match.privateKeyWif && (
+              <div style={{ marginTop: '10px', padding: '10px', background: '#064e3b', border: '1px solid #22c55e', borderRadius: '5px' }}>
+                <p style={{ margin: 0, color: '#4ade80' }}><strong>✅ Private Key (WIF):</strong></p>
+                <code style={{ wordBreak: 'break-all', color: 'white' }}>{match.privateKeyWif}</code>
+                
+                <p style={{ margin: '10px 0 0 0', color: '#4ade80' }}><strong>Private Key (HEX):</strong></p>
+                <code style={{ wordBreak: 'break-all', color: 'white' }}>{match.privateKeyHex}</code>
+              </div>
+            )}
           </div>
         )}
       </section>
     </main>
   );
-}
+  }
