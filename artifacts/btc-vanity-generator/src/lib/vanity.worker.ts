@@ -8,7 +8,6 @@ import {
   randomPrivateKey,
 } from "./bitcoin";
 import {
-  CANDIDATE_BATCH_SIZE,
   MAX_RECORDED_RANGE_CANDIDATES,
   type CandidateRecord,
   type WorkerRequest,
@@ -65,40 +64,62 @@ worker.onmessage = (event) => {
     let pendingCandidates: CandidateRecord[] = [];
 
     try {
+      if (options.generateOnly && options.mode !== "range") {
+        throw new Error("Generate-only mode requires a custom key range.");
+      }
+      if (
+        !options.generateOnly &&
+        !options.targetAddress &&
+        !options.prefix &&
+        !options.suffix
+      ) {
+        throw new Error("Enter a prefix or suffix to search for.");
+      }
+
       if (options.mode === "range") {
         start = parseRangeValue(options.startHex, "Start of range");
         end = parseRangeValue(options.endHex, "End of range");
-        if (start > end) throw new Error("Range start > end");
+        if (start > end) {
+          throw new Error("The range start must be less than or equal to its end.");
+        }
         cursor = start;
       }
 
       const rangeSize = options.mode === "range" ? end - start + 1n : 0n;
       const candidateLimit = options.candidateLimit ?? MAX_RECORDED_RANGE_CANDIDATES;
-      let lastReportAt = 0;
+      
+      if (!Number.isInteger(candidateLimit) || candidateLimit < 1 || candidateLimit > MAX_RECORDED_RANGE_CANDIDATES) {
+        throw new Error("Candidate history limit is outside the allowed range.");
+      }
 
+      let lastReportAt = 0;
+      
       const flushCandidates = () => {
         if (pendingCandidates.length === 0) return;
         worker.postMessage({ type: "candidates", candidates: pendingCandidates });
         pendingCandidates = [];
       };
 
-      // هادي هي الحلقة اللي زدنا فيها السرعة
+      // الحلقة اللانهائية (كتبقى خدامة حتى تحبسها)
       while (!stopRequested) {
-        // زدنا العدد من 500 لـ 5000 باش نرفعو السرعة
+        
+        // كنقلبو على 5000 عملية فـ الدورة باش نرفعو السرعة
         for (let count = 0; count < 5000 && !stopRequested; count += 1) {
+          
           if (options.mode === "range" && cursor > end) {
             flushCandidates();
             worker.postMessage({ type: "exhausted", attempts, elapsedMs: Math.max(1, performance.now() - startedAt) });
             return;
           }
 
+          // 1. توليد المفتاح
           const key = options.mode === "range" ? privateKeyFromRangeValue(cursor++) : randomPrivateKey();
           
-          // هنا كنحسبو غير الـ Address (باش نسرعو)، وملي نلقاو التطابق كنحسبو الـ WIF
+          // 2. حساب العنوان فقط (بلا WIF باش نسرعو)
           const address = deriveBitcoinAddressOnly(key, options.format);
           attempts += 1;
 
-          // إلا كنا فـ Range mode وكنحتاجو الداتا ديال الـ WIF
+          // 3. إلا كنا فـ Range mode وكنحتاجو الـ WIF
           if (options.mode === "range") {
             const result = deriveBitcoinAddress(key, options.format);
             pendingCandidates.push({
@@ -108,12 +129,12 @@ worker.onmessage = (event) => {
               rangeStartHex: start.toString(16),
               rangeEndHex: end.toString(16),
             });
-            // زدنا الـ Batch باش نقللو الـ postMessage
             if (pendingCandidates.length >= 1000) {
               flushCandidates();
             }
           }
 
+          // 4. التحقق من التطابق
           if (!options.generateOnly && matches(address, options.prefix, options.suffix, options.targetAddress ?? "")) {
             flushCandidates();
             const result = deriveBitcoinAddress(key, options.format);
@@ -126,6 +147,7 @@ worker.onmessage = (event) => {
             return;
           }
 
+          // 5. التحقق من الـ Limit
           if (options.mode === "range" && attempts >= candidateLimit && cursor <= end) {
             flushCandidates();
             worker.postMessage({ type: "history-limit", attempts, elapsedMs: Math.max(1, performance.now() - startedAt), limit: MAX_RECORDED_RANGE_CANDIDATES });
@@ -133,6 +155,7 @@ worker.onmessage = (event) => {
           }
         }
 
+        // تحديث التقدم كل 200 ميلي ثانية
         const now = performance.now();
         if (now - lastReportAt >= 200) {
           const percent = options.mode === "range" ? Math.min(100, Number(((cursor - start) * 1_000_000n) / rangeSize) / 10_000) : null;
@@ -140,12 +163,13 @@ worker.onmessage = (event) => {
           lastReportAt = now;
         }
 
-        // هادي هي اللي كتخلي المتصفح يتنفس، ولكن كنعطيو وقت أقل
+        // إعطاء فرصة للمتصفح باش يتنفس
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
 
       flushCandidates();
       worker.postMessage({ type: "stopped", attempts, elapsedMs: Math.max(1, performance.now() - startedAt) });
+      
     } catch (error) {
       worker.postMessage({ type: "error", message: error instanceof Error ? error.message : "Search failed." });
     } finally {
