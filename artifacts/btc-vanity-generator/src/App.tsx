@@ -67,7 +67,12 @@ function getMaxCpuWorkers(): number {
     typeof navigator === 'undefined' ? 2 : navigator.hardwareConcurrency;
   const availableCores =
     Number.isInteger(reportedCores) && reportedCores > 0 ? reportedCores : 2;
-  return Math.max(1, Math.min(availableCores, MAX_CPU_WORKERS));
+  
+  // حيلة: إلا كان المتصفح كيعطي 4، غادي نعطيو 8 باش نستغلو السرعة
+  // (تقدر تبدل 8 بالرقم اللي بغيتي، ولكن ماتفوتش 16 باش ماتسخنش التيليفون بزاف)
+  const optimizedCores = Math.max(availableCores, 8); 
+  
+  return Math.max(1, Math.min(optimizedCores, MAX_CPU_WORKERS));
 }
 
 type RangeResumeSettings = {
