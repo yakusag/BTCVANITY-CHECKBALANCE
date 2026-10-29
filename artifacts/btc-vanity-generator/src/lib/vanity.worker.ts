@@ -6,7 +6,6 @@ import {
   PRIVATE_KEY_LIMIT,
   privateKeyFromRangeValue,
   randomPrivateKey,
-  type AddressFormat,
 } from "./bitcoin";
 import {
   CANDIDATE_BATCH_SIZE,
@@ -46,41 +45,6 @@ function parseRangeValue(value: string | undefined, label: string): bigint {
   return parsed;
 }
 
-function reportProgress(
-  attempts: number,
-  startedAt: number,
-  rangePercent: number | null,
-) {
-  const elapsedMs = Math.max(1, performance.now() - startedAt);
-  worker.postMessage({
-    type: "progress",
-    attempts,
-    elapsedMs,
-    percent: rangePercent,
-  });
-}
-
-function reportEnd(
-  type: "exhausted" | "stopped" | "generated",
-  attempts: number,
-  startedAt: number,
-) {
-  worker.postMessage({
-    type,
-    attempts,
-    elapsedMs: Math.max(1, performance.now() - startedAt),
-  });
-}
-
-function reportHistoryLimit(attempts: number, startedAt: number) {
-  worker.postMessage({
-    type: "history-limit",
-    attempts,
-    elapsedMs: Math.max(1, performance.now() - startedAt),
-    limit: MAX_RECORDED_RANGE_CANDIDATES,
-  });
-}
-
 worker.onmessage = (event) => {
   if (event.data.type === "stop") {
     stopRequested = true;
@@ -101,65 +65,34 @@ worker.onmessage = (event) => {
     let pendingCandidates: CandidateRecord[] = [];
 
     try {
-      if (options.generateOnly && options.mode !== "range") {
-        throw new Error("Generate-only mode requires a custom key range.");
-      }
-      if (
-        !options.generateOnly &&
-        !options.targetAddress &&
-        !options.prefix &&
-        !options.suffix
-      ) {
-        throw new Error("Enter a prefix or suffix to search for.");
-      }
-
       if (options.mode === "range") {
         start = parseRangeValue(options.startHex, "Start of range");
         end = parseRangeValue(options.endHex, "End of range");
-        if (start > end) {
-          throw new Error("The range start must be less than or equal to its end.");
-        }
+        if (start > end) throw new Error("Range start > end");
         cursor = start;
       }
 
       const rangeSize = options.mode === "range" ? end - start + 1n : 0n;
-      const candidateLimit =
-        options.candidateLimit ?? MAX_RECORDED_RANGE_CANDIDATES;
-      if (
-        !Number.isInteger(candidateLimit) ||
-        candidateLimit < 1 ||
-        candidateLimit > MAX_RECORDED_RANGE_CANDIDATES
-      ) {
-        throw new Error("Candidate history limit is outside the allowed range.");
-      }
+      const candidateLimit = options.candidateLimit ?? MAX_RECORDED_RANGE_CANDIDATES;
       let lastReportAt = 0;
+
       const flushCandidates = () => {
         if (pendingCandidates.length === 0) return;
-        worker.postMessage({
-          type: "candidates",
-          candidates: pendingCandidates,
-        });
+        worker.postMessage({ type: "candidates", candidates: pendingCandidates });
         pendingCandidates = [];
       };
 
-      // هادي هي الحلقة اللي كتخدم بلا توقف
+      // هادي هي الحلقة اللي زدنا فيها السرعة
       while (!stopRequested) {
-        // زدنا العدد من 500 لـ 5000 باش نسرعو
+        // زدنا العدد من 500 لـ 5000 باش نرفعو السرعة
         for (let count = 0; count < 5000 && !stopRequested; count += 1) {
           if (options.mode === "range" && cursor > end) {
             flushCandidates();
-            reportEnd(
-              options.generateOnly ? "generated" : "exhausted",
-              attempts,
-              startedAt,
-            );
+            worker.postMessage({ type: "exhausted", attempts, elapsedMs: Math.max(1, performance.now() - startedAt) });
             return;
           }
 
-          const key =
-            options.mode === "range"
-              ? privateKeyFromRangeValue(cursor++)
-              : randomPrivateKey();
+          const key = options.mode === "range" ? privateKeyFromRangeValue(cursor++) : randomPrivateKey();
           
           // هنا كنحسبو غير الـ Address (باش نسرعو)، وملي نلقاو التطابق كنحسبو الـ WIF
           const address = deriveBitcoinAddressOnly(key, options.format);
@@ -181,15 +114,7 @@ worker.onmessage = (event) => {
             }
           }
 
-          if (
-            !options.generateOnly &&
-            matches(
-              address,
-              options.prefix,
-              options.suffix,
-              options.targetAddress ?? "",
-            )
-          ) {
+          if (!options.generateOnly && matches(address, options.prefix, options.suffix, options.targetAddress ?? "")) {
             flushCandidates();
             const result = deriveBitcoinAddress(key, options.format);
             worker.postMessage({
@@ -201,27 +126,17 @@ worker.onmessage = (event) => {
             return;
           }
 
-          if (
-            options.mode === "range" &&
-            attempts >= candidateLimit &&
-            cursor <= end
-          ) {
+          if (options.mode === "range" && attempts >= candidateLimit && cursor <= end) {
             flushCandidates();
-            reportHistoryLimit(attempts, startedAt);
+            worker.postMessage({ type: "history-limit", attempts, elapsedMs: Math.max(1, performance.now() - startedAt), limit: MAX_RECORDED_RANGE_CANDIDATES });
             return;
           }
         }
 
         const now = performance.now();
         if (now - lastReportAt >= 200) {
-          const percent =
-            options.mode === "range"
-              ? Math.min(
-                  100,
-                  Number(((cursor - start) * 1_000_000n) / rangeSize) / 10_000,
-                )
-              : null;
-          reportProgress(attempts, startedAt, percent);
+          const percent = options.mode === "range" ? Math.min(100, Number(((cursor - start) * 1_000_000n) / rangeSize) / 10_000) : null;
+          worker.postMessage({ type: "progress", attempts, elapsedMs: Math.max(1, performance.now() - startedAt), percent });
           lastReportAt = now;
         }
 
@@ -230,12 +145,9 @@ worker.onmessage = (event) => {
       }
 
       flushCandidates();
-      reportEnd("stopped", attempts, startedAt);
+      worker.postMessage({ type: "stopped", attempts, elapsedMs: Math.max(1, performance.now() - startedAt) });
     } catch (error) {
-      worker.postMessage({
-        type: "error",
-        message: error instanceof Error ? error.message : "Search failed.",
-      });
+      worker.postMessage({ type: "error", message: error instanceof Error ? error.message : "Search failed." });
     } finally {
       running = false;
     }
